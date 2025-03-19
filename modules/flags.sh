@@ -1,6 +1,15 @@
 #!/bin/bash
+
 validate_flags() {
-  VALID_FLAGS=(--help --interactive --platform= --platform-status --update --version --status --log --list --remove --clean --share --team --contributors --pull-only --dry-run --sync-now)
+  VALID_FLAGS=(
+    --help --interactive --platform= --platform-status
+    --update --version
+    --status --log --list
+    --remove --clean
+    --pull-only --dry-run
+    --sync-now
+  )
+
   for arg in "$@"; do
     if [[ "$arg" == --* ]]; then
       base="${arg%%=*}"
