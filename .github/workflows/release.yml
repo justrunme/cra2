@@ -8,8 +8,10 @@ on:
 jobs:
   autotag:
     runs-on: ubuntu-latest
+
     outputs:
       version: ${{ steps.set_version.outputs.version }}
+
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -30,8 +32,8 @@ jobs:
           git push origin "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: 🧪 DEBUG: show version
-        run: echo "🔖 Generated version is ${{ steps.set_version.outputs.version }}"
+      - name: 🧪 Debug: show version
+        run: echo "🔖 Version: ${{ steps.set_version.outputs.version }}"
 
   test:
     runs-on: ubuntu-latest
@@ -45,13 +47,21 @@ jobs:
     needs: [autotag, test]
     steps:
       - uses: actions/checkout@v4
-      - run: |
+
+      - name: 🧪 Check all required modules
+        run: |
           echo "📂 modules/"
           ls -la modules/
-          for mod in colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh; do
-            test -f modules/$mod || { echo "❌ Missing $mod"; exit 1; }
+          REQUIRED_MODULES=(
+            colors.sh flags.sh version.sh update.sh help.sh config.sh
+            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
+          )
+          for mod in "${REQUIRED_MODULES[@]}"; do
+            test -f modules/$mod || { echo "❌ Missing module: $mod"; exit 1; }
           done
-      - run: |
+
+      - name: 🛠 Build DEB
+        run: |
           VERSION="${{ needs.autotag.outputs.version }}"
           mkdir -p pkg/usr/local/bin/modules pkg/DEBIAN
           cp create-repo update-all install-create-repo.sh pkg/usr/local/bin/
@@ -64,7 +74,7 @@ jobs:
           echo "Priority: optional" >> pkg/DEBIAN/control
           echo "Architecture: all" >> pkg/DEBIAN/control
           echo "Maintainer: you@example.com" >> pkg/DEBIAN/control
-          echo "Description: Modular CLI tool" >> pkg/DEBIAN/control
+          echo "Description: Modular Git auto-sync CLI" >> pkg/DEBIAN/control
           echo -e "#!/bin/bash\necho ✅ Installed create-repo ${VERSION#v}" > pkg/DEBIAN/postinst
           chmod +x pkg/DEBIAN/postinst
           dpkg-deb --build pkg
@@ -76,7 +86,19 @@ jobs:
     needs: [autotag, test]
     steps:
       - uses: actions/checkout@v4
-      - run: |
+
+      - name: 🧪 Check modules on macOS
+        run: |
+          REQUIRED_MODULES=(
+            colors.sh flags.sh version.sh update.sh help.sh config.sh
+            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
+          )
+          for mod in "${REQUIRED_MODULES[@]}"; do
+            test -f modules/$mod || { echo "❌ Missing module: $mod"; exit 1; }
+          done
+
+      - name: 🌧️ Build PKG
+        run: |
           VERSION="${{ needs.autotag.outputs.version }}"
           mkdir -p pkg-root/usr/local/bin/modules
           cp create-repo update-all install-create-repo.sh pkg-root/usr/local/bin/
@@ -96,7 +118,8 @@ jobs:
     needs: [build-deb, build-mac, autotag]
     steps:
       - uses: actions/checkout@v4
-      - name: 🚀 Release to GitHub
+
+      - name: 🚀 Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.autotag.outputs.version }}
