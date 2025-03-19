@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Подключаем utils для suggest_flag
+source "$SCRIPT_DIR/modules/utils.sh"
+
 validate_flags() {
   VALID_FLAGS=(
     --help
@@ -7,6 +10,7 @@ validate_flags() {
     --platform=
     --platform-status
     --update
+    --upgrade
     --version
     --status
     --log
@@ -26,15 +30,17 @@ validate_flags() {
       base="${arg%%=*}"
       match=false
       for valid in "${VALID_FLAGS[@]}"; do
-        [[ "$base" == "$valid" ]] && match=true && break
+        [[ "$valid" == "$base" ]] && match=true && break
       done
       if ! $match; then
         echo -e "${RED}❌ Unknown flag: $arg${RESET}"
+        suggest_flag "$arg"
         echo -e "${YELLOW}➡️  Tip: run 'create-repo --help' to see available options${RESET}"
         exit 1
       fi
     elif [[ "$arg" == -* ]]; then
       echo -e "${RED}❌ Unknown short flag: $arg${RESET}"
+      suggest_flag "$arg"
       echo -e "${YELLOW}➡️  Tip: use long flags like --version or --help${RESET}"
       exit 1
     fi
