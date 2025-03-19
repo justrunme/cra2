@@ -1,85 +1,101 @@
 #!/bin/bash
 
-# ====== config ======
+# === Load modules ===
 SCRIPT_DIR="/opt/cra2"
 MODULES_DIR="$SCRIPT_DIR/modules"
+
 source "$MODULES_DIR/colors.sh"
 source "$MODULES_DIR/logger.sh"
 source "$MODULES_DIR/config.sh"
 source "$MODULES_DIR/platform.sh"
 source "$MODULES_DIR/git.sh"
 
-# ====== flags ======
+# === Default flags ===
 PULL_ONLY=false
 DRY_RUN=false
 
+# === Parse flags ===
 for arg in "$@"; do
   case "$arg" in
     --pull-only) PULL_ONLY=true ;;
     --dry-run) DRY_RUN=true ;;
-    *) echo "Unknown flag: $arg" && exit 1 ;;
+    --help)
+      echo "Usage: update-all [--pull-only] [--dry-run]"
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}❌ Unknown flag: $arg${RESET}"
+      echo "Use --help to see available options."
+      exit 1
+      ;;
   esac
 done
 
-# ====== files ======
+# === File paths ===
 LIST_FILE="$HOME/.repo-autosync.list"
 LOG_FILE="$HOME/.create-repo.log"
 ERROR_LOG="$HOME/.create-repo-errors.log"
 
-# ====== check list file ======
+# === Start ===
 if [ ! -f "$LIST_FILE" ]; then
-  echo "No repos tracked. Use create-repo to start tracking."
+  echo -e "${YELLOW}⚠️ No repos tracked. Use create-repo to track repositories.${RESET}"
   exit 0
 fi
 
-# ====== start sync ======
 echo -e "${BOLD}🔄 Starting sync of tracked repositories...${RESET}"
+
 while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
   [ -z "$repo_path" ] && continue
-  [ ! -d "$repo_path/.git" ] && echo "❌ Not a Git repo: $repo_path" && continue
+  [ ! -d "$repo_path/.git" ] && echo -e "${RED}❌ Not a Git repo: $repo_path${RESET}" && continue
 
   cd "$repo_path" || continue
   PROJECT_NAME=$(basename "$repo_path")
   BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
-  # ===== local config =====
+  # === Load local config ===
   LOCAL_CONF="$repo_path/.create-repo.local.conf"
   if [ -f "$LOCAL_CONF" ]; then
     source "$LOCAL_CONF"
-    if [ "$disable_sync" == "true" ]; then
-      echo -e "🚫 $PROJECT_NAME skipped (disabled via local config)"
+    if [ "$disable_sync" = "true" ]; then
+      echo -e "🚫 ${YELLOW}$PROJECT_NAME skipped (disabled via local config)${RESET}"
       continue
     fi
   fi
 
-  echo -e "\n📁 $PROJECT_NAME ($BRANCH)"
+  echo -e "\n📁 ${BOLD}$PROJECT_NAME${RESET} ${DIM}[$repo_path]${RESET}"
+  echo -e "🔀 Current branch: ${CYAN}$BRANCH${RESET}"
 
-  # ===== pull =====
-  git pull origin "$BRANCH"
-  PULL_STATUS=$?
+  # === Git pull ===
+  echo -e "⬇️  Pulling..."
+  if git pull origin "$BRANCH"; then
+    echo -e "${GREEN}✅ Pull success${RESET}"
+  else
+    echo -e "${RED}❌ Pull failed${RESET}"
+    log_error "$PROJECT_NAME" "$repo_path"
+    continue
+  fi
 
   if [ "$PULL_ONLY" = true ]; then
-    echo -e "🔄 pull-only mode. Push skipped."
+    echo -e "📦 Pull-only mode active. Skipping push."
+    log_success "$PROJECT_NAME" "$repo_path"
     continue
   fi
 
   if [ "$DRY_RUN" = true ]; then
-    echo -e "🧪 dry-run mode. Simulating push..."
+    echo -e "🧪 Dry-run mode: simulating push..."
     git status
+    log_success "$PROJECT_NAME (dry-run)" "$repo_path"
     continue
   fi
 
-  # ===== push =====
-  git push origin "$BRANCH"
-  PUSH_STATUS=$?
-
-  # ===== result logging =====
-  if [ "$PULL_STATUS" -eq 0 ] && [ "$PUSH_STATUS" -eq 0 ]; then
+  # === Git push ===
+  echo -e "⬆️  Pushing..."
+  if git push origin "$BRANCH"; then
+    echo -e "${GREEN}✅ Push success${RESET}"
     log_success "$PROJECT_NAME" "$repo_path"
-    echo -e "✅ Synced successfully"
   else
+    echo -e "${RED}❌ Push failed${RESET}"
     log_error "$PROJECT_NAME" "$repo_path"
-    echo -e "❌ Sync failed"
   fi
 
 done < "$LIST_FILE"
