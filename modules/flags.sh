@@ -2,11 +2,22 @@
 
 validate_flags() {
   VALID_FLAGS=(
-    --help --interactive --platform= --platform-status
-    --update --version
-    --status --log --list
-    --remove --clean
-    --pull-only --dry-run
+    --help
+    --interactive
+    --platform=
+    --platform-status
+    --update
+    --version
+    --status
+    --log
+    --list
+    --remove
+    --clean
+    --share
+    --team
+    --contributors
+    --pull-only
+    --dry-run
     --sync-now
   )
 
@@ -24,7 +35,7 @@ validate_flags() {
       fi
     elif [[ "$arg" == -* ]]; then
       echo -e "${RED}❌ Unknown short flag: $arg${RESET}"
-      echo -e "${YELLOW}➡️  Tip: run 'create-repo --help' to see available options${RESET}"
+      echo -e "${YELLOW}➡️  Tip: use long flags like --version or --help${RESET}"
       exit 1
     fi
   done
