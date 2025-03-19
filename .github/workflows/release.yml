@@ -33,12 +33,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
 
-      - name: 📦 Make create-repo executable and available
-        run: |
-          chmod +x create-repo
-          sudo cp create-repo /usr/local/bin/
+      - name: 📦 Make create-repo executable
+        run: chmod +x create-repo
 
       - name: ✅ Run all tests
         run: |
