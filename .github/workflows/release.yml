@@ -30,7 +30,7 @@ jobs:
           version="v$major.$minor.$patch"
           git tag "$version"
           git push origin "$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "version=$version" | tee -a "$GITHUB_OUTPUT"
 
       - name: 🧪 Debug: show version
         run: echo "🔖 Version: ${{ steps.set_version.outputs.version }}"
