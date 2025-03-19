@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+echo "🗑 postrm script for create-repo-auto."
+
+# For final cleanup after package removal
+# e.g. remove leftover config files if you want
+# rm -f ~/.create-repo.conf ~/.repo-autosync.list || true
+
+echo "✅ postrm complete."
+exit 0

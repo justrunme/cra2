@@ -1,0 +1,13 @@
+Package: create-repo-auto
+Version: 1.3.0
+Section: utils
+Priority: optional
+Architecture: all
+Essential: no
+Maintainer: justrunme <justrunme@gmail>
+Depends: bash, git, curl, jq
+Description: create-repo - A CLI tool for rapid and automated initialization, publication, and synchronization of Git repositories (GitHub/GitLab/Bitbucket), with automatic tracking via cron or launchd.
+ This package installs:
+  - create-repo (main CLI script)
+  - update-all (auto-sync script)
+  - Supports interactive mode, auto-update, and more.

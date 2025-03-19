@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+echo "🧹 prerm script for create-repo-auto: removing alias 'cra' if it exists."
+
+rm -f /usr/local/bin/cra || true
+
+# (Optional) remove cron/launchd tasks here if desired
+# e.g., you could parse crontab or unload launchd
+# but typically it's better to keep them until the entire package is removed
+
+echo "✅ prerm done."
+exit 0

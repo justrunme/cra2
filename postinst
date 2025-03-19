@@ -1,0 +1,63 @@
+#!/bin/bash
+set -e
+
+echo "🔧 Post-install script for create-repo-auto"
+
+# 1) Create or update an alias 'cra' if create-repo is installed
+if [[ -x /usr/local/bin/create-repo ]]; then
+  ln -sf /usr/local/bin/create-repo /usr/local/bin/cra
+  echo "✅ Alias 'cra' -> 'create-repo' created or updated."
+fi
+
+# 2) Check for ~/.create-repo.conf and ~/.repo-autosync.list
+CONFIG_FILE="$HOME/.create-repo.conf"
+REPO_LIST="$HOME/.repo-autosync.list"
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  echo "📄 Generating default $CONFIG_FILE"
+  cat <<EOF > "$CONFIG_FILE"
+default_cron_interval=1
+default_visibility=public
+EOF
+fi
+
+if [[ ! -f "$REPO_LIST" ]]; then
+  echo "📄 Creating $REPO_LIST"
+  touch "$REPO_LIST"
+fi
+
+# 3) Set up auto-sync in cron (Linux) or launchd (macOS)
+INTERVAL=$(grep default_cron_interval "$CONFIG_FILE" | cut -d= -f2)
+INTERVAL=${INTERVAL:-1}
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  echo "🖥 Setting up launchd (macOS) for auto-sync"
+  plist="$HOME/Library/LaunchAgents/com.create-repo.auto.plist"
+  cat > "$plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+"http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.create-repo.auto</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/update-all</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>$((INTERVAL * 60))</integer>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+  launchctl unload "$plist" &>/dev/null || true
+  launchctl load "$plist"
+else
+  echo "🕒 Setting up cron (Linux/WSL)"
+  (crontab -l 2>/dev/null; echo "*/$INTERVAL * * * * /usr/local/bin/update-all # auto-sync by create-repo") | sort -u | crontab -
+fi
+
+echo "✅ Post-install complete."
+exit 0
