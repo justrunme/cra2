@@ -1,16 +1,7 @@
 #!/bin/bash
 set -e
 
-# 👣 Get actual script location even if symlinked
-SOURCE="${BASH_SOURCE[0]}"
-while [ -L "$SOURCE" ]; do
-  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
-  SOURCE="$(readlink "$SOURCE")"
-  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
-done
-SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
-
-# 📦 Load modules
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/modules/colors.sh"
 source "$SCRIPT_DIR/modules/flags.sh"
 source "$SCRIPT_DIR/modules/version.sh"
@@ -21,5 +12,4 @@ source "$SCRIPT_DIR/modules/platform.sh"
 source "$SCRIPT_DIR/modules/repo.sh"
 source "$SCRIPT_DIR/modules/logger.sh"
 
-# 🚀 Run
 main "$@"
