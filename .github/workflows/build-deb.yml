@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # Берём все теги и историю
 
       - name: 🔧 Set up Git
         run: |
@@ -22,29 +24,35 @@ jobs:
         id: autotag
         shell: bash
         run: |
+          # Обновляем локальные теги
           git fetch --tags
-          # Find the latest existing tag in vN.N.N format
+
+          # Ищем последний тег в формате vX.Y.Z
           latest=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n1)
-          echo "Latest tag: $latest"
+          echo "Latest tag found: $latest"
 
           if [[ -z "$latest" ]]; then
-            # If none exists, start at 1.0.0 or your preference
+            # Если не нашли — начинаем с 1.0.0
             major=1; minor=0; patch=0
           else
             IFS='.' read -r major minor patch <<< "$latest"
             patch=$((patch + 1))
           fi
-          new_tag="v$major.$minor.$patch"
 
-          # Force-create or update the tag
+          new_tag="v$major.$minor.$patch"
+          echo "New tag: $new_tag"
+
+          # Создаём/обновляем тег, пушим с --force
           git tag -f "$new_tag"
           git push origin -f "$new_tag"
 
+          # Сохраняем для использования в других шагах
           echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
 
-      - name: 🏗 Replace version in scripts
+      - name: 🏗 Replace {{VERSION}} in scripts
         run: |
-          # Example: If you have a placeholder {{VERSION}} in create-repo or update-all
+          # Если у вас есть placeholder {{VERSION}} в create-repo или update-all
+          # можно заменить на актуальный тег
           VERSION="${{ steps.autotag.outputs.new_tag }}"
           sed -i "s/{{VERSION}}/$VERSION/g" create-repo
           sed -i "s/{{VERSION}}/$VERSION/g" update-all
@@ -57,25 +65,29 @@ jobs:
       - name: 📦 Build DEB package
         run: |
           VERSION="${{ steps.autotag.outputs.new_tag }}"
+          # 1) Создаём структуру: pkg/usr/local/bin + pkg/DEBIAN
           mkdir -p pkg/usr/local/bin
           mkdir -p pkg/DEBIAN
 
-          # Copy scripts
+          # 2) Копируем скрипты
           cp create-repo pkg/usr/local/bin/
           cp update-all pkg/usr/local/bin/
           chmod +x pkg/usr/local/bin/create-repo pkg/usr/local/bin/update-all
 
-          # Copy Debian control files
+          # 3) Копируем файлы DEBIAN/
+          # Важно, чтобы в репозитории был каталог DEBIAN/ с control, postinst, prerm
           cp DEBIAN/control pkg/DEBIAN/control
           cp DEBIAN/postinst pkg/DEBIAN/postinst
           cp DEBIAN/prerm pkg/DEBIAN/prerm
           # optional: cp DEBIAN/postrm pkg/DEBIAN/postrm
-          chmod +x pkg/DEBIAN/postinst pkg/DEBIAN/prerm
 
-          # Insert version into control file
+          chmod +x pkg/DEBIAN/postinst pkg/DEBIAN/prerm
+          # (optional) chmod +x pkg/DEBIAN/postrm
+
+          # 4) Вставляем версию в control:
           sed -i "s/^Version:.*/Version: ${VERSION#v}/" pkg/DEBIAN/control
 
-          # Build .deb
+          # 5) Собираем пакет
           dpkg-deb --build pkg
           mv pkg.deb create-repo_${VERSION#v}.deb
 
@@ -89,4 +101,5 @@ jobs:
 
             ✏️ Changes:
             - Auto-synced from main
-          files: create-repo_*.deb
+          files: |
+            create-repo_*.deb
