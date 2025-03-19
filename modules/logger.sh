@@ -1,9 +1,15 @@
 #!/bin/bash
+
 log_success() {
-  echo -e "${GREEN}✅ $1${RESET}"
-  echo "$(date "+%Y-%m-%d %H:%M:%S") | SUCCESS | $1" >> "$LOG_FILE"
+  local name="$1"
+  local path="$2"
+  echo -e "${GREEN}✅ $name${RESET}"
+  echo "$(date "+%Y-%m-%d %H:%M:%S") | SUCCESS | $name | $path" >> "$LOG_FILE"
 }
+
 log_error() {
-  echo -e "${RED}❌ $1${RESET}"
-  echo "$(date "+%Y-%m-%d %H:%M:%S") | ERROR | $1" >> "$ERROR_LOG"
+  local name="$1"
+  local path="$2"
+  echo -e "${RED}❌ $name${RESET}"
+  echo "$(date "+%Y-%m-%d %H:%M:%S") | ERROR | $name | $path" >> "$ERROR_LOG"
 }
