@@ -1,40 +1,85 @@
 #!/bin/bash
-set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/modules/colors.sh"
-source "$SCRIPT_DIR/modules/config.sh"
-source "$SCRIPT_DIR/modules/logger.sh"
-source "$SCRIPT_DIR/modules/utils.sh"
+# ====== config ======
+SCRIPT_DIR="/opt/cra2"
+MODULES_DIR="$SCRIPT_DIR/modules"
+source "$MODULES_DIR/colors.sh"
+source "$MODULES_DIR/logger.sh"
+source "$MODULES_DIR/config.sh"
+source "$MODULES_DIR/platform.sh"
+source "$MODULES_DIR/git.sh"
 
-NOW=$(date "+%Y-%m-%d %H:%M:%S")
-echo -e "${BLUE}🔁 Running update-all at $NOW${RESET}"
+# ====== flags ======
+PULL_ONLY=false
+DRY_RUN=false
 
-while read -r repo; do
-  [ -z "$repo" ] && continue
-  if [ ! -d "$repo/.git" ]; then
-    log_error "$repo is not a Git repository, skipping."
-    continue
-  fi
+for arg in "$@"; do
+  case "$arg" in
+    --pull-only) PULL_ONLY=true ;;
+    --dry-run) DRY_RUN=true ;;
+    *) echo "Unknown flag: $arg" && exit 1 ;;
+  esac
+done
 
-  # Optional: allow per-repo opt-out via .create-repo.local.conf
-  if [[ -f "$repo/.create-repo.local.conf" ]]; then
-    source "$repo/.create-repo.local.conf"
-    if [[ "$disable_sync" == "true" ]]; then
-      log_success "⏭️ Skipped $repo (sync disabled)"
+# ====== files ======
+LIST_FILE="$HOME/.repo-autosync.list"
+LOG_FILE="$HOME/.create-repo.log"
+ERROR_LOG="$HOME/.create-repo-errors.log"
+
+# ====== check list file ======
+if [ ! -f "$LIST_FILE" ]; then
+  echo "No repos tracked. Use create-repo to start tracking."
+  exit 0
+fi
+
+# ====== start sync ======
+echo -e "${BOLD}🔄 Starting sync of tracked repositories...${RESET}"
+while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
+  [ -z "$repo_path" ] && continue
+  [ ! -d "$repo_path/.git" ] && echo "❌ Not a Git repo: $repo_path" && continue
+
+  cd "$repo_path" || continue
+  PROJECT_NAME=$(basename "$repo_path")
+  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+  # ===== local config =====
+  LOCAL_CONF="$repo_path/.create-repo.local.conf"
+  if [ -f "$LOCAL_CONF" ]; then
+    source "$LOCAL_CONF"
+    if [ "$disable_sync" == "true" ]; then
+      echo -e "🚫 $PROJECT_NAME skipped (disabled via local config)"
       continue
     fi
   fi
 
-  cd "$repo" || continue
-  echo -e "${YELLOW}📁 Syncing: $repo${RESET}"
-  branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
+  echo -e "\n📁 $PROJECT_NAME ($BRANCH)"
 
-  git add . &>/dev/null
-  git commit -m "Auto-sync at $NOW" &>/dev/null || true
-  git pull origin "$branch" --rebase &>/dev/null || true
-  git push origin "$branch" &>/dev/null && log_success "$repo synced." || log_error "$repo push failed."
+  # ===== pull =====
+  git pull origin "$BRANCH"
+  PULL_STATUS=$?
 
-done < "$REPO_LIST"
+  if [ "$PULL_ONLY" = true ]; then
+    echo -e "🔄 pull-only mode. Push skipped."
+    continue
+  fi
 
-echo -e "${GREEN}✅ All repositories processed.${RESET}"
+  if [ "$DRY_RUN" = true ]; then
+    echo -e "🧪 dry-run mode. Simulating push..."
+    git status
+    continue
+  fi
+
+  # ===== push =====
+  git push origin "$BRANCH"
+  PUSH_STATUS=$?
+
+  # ===== result logging =====
+  if [ "$PULL_STATUS" -eq 0 ] && [ "$PUSH_STATUS" -eq 0 ]; then
+    log_success "$PROJECT_NAME" "$repo_path"
+    echo -e "✅ Synced successfully"
+  else
+    log_error "$PROJECT_NAME" "$repo_path"
+    echo -e "❌ Sync failed"
+  fi
+
+done < "$LIST_FILE"
