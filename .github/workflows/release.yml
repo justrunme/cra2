@@ -114,3 +114,4 @@ EOF
           tag_name: ${{ needs.autotag.outputs.version }}
           name: Release ${{ needs.autotag.outputs.version }}
           files: create-repo_*.pkg
+
