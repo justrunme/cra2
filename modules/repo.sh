@@ -1,35 +1,36 @@
 #!/bin/bash
-git_init_repo() {
-  local repo="$1"
-  local branch="$2"
-  local platform="$3"
-  local visibility="$4"
-  local now="$5"
-  local logfile="$6"
-  local repolist="$7"
 
-  git init &>/dev/null
-  git checkout -b "$branch" &>/dev/null || git checkout "$branch"
-  [ ! -f README.md ] && echo "# $repo" > README.md
-  [ ! -f .gitignore ] && echo ".DS_Store" > .gitignore
-  git add .
-  git commit -m "Initial commit at $now" &>/dev/null || true
+show_repo_status() {
+  echo -e "${BLUE}📦 Git status for $(basename "$PWD")${RESET}"
+  git status
+}
 
-  if [[ "$platform" == "github" ]]; then
-    user=$(gh api user --jq .login)
-    remote_url="git@github.com:$user/$repo.git"
-    gh repo view "$repo" &>/dev/null || gh repo create "$repo" --$visibility --source=. --push
-  elif [[ "$platform" == "gitlab" ]]; then
-    response=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN"       --data "name=$repo&visibility=$visibility" https://gitlab.com/api/v4/projects)
-    remote_url=$(echo "$response" | grep -oP '"ssh_url_to_repo":"\K[^"]+')
-  elif [[ "$platform" == "bitbucket" ]]; then
-    curl -s -u "$BITBUCKET_USERNAME:$BITBUCKET_APP_PASSWORD"       -X POST "https://api.bitbucket.org/2.0/repositories/$BITBUCKET_USERNAME/$repo"       -H "Content-Type: application/json"       -d "{"scm": "git", "is_private": $( [[ "$visibility" == "private" ]] && echo true || echo false ) }"
-    remote_url="git@bitbucket.org:$BITBUCKET_USERNAME/$repo.git"
+show_log() {
+  if [[ -f "$LOG_FILE" ]]; then
+    echo -e "${BLUE}📜 Sync log:${RESET}"
+    cat "$LOG_FILE"
+  else
+    echo -e "${YELLOW}⚠️ No log file found.${RESET}"
   fi
+}
 
-  git remote add origin "$remote_url" 2>/dev/null || true
-  git push -u origin "$branch" &>/dev/null || true
+show_list() {
+  if [[ -f "$REPO_LIST" ]]; then
+    echo -e "${BLUE}📁 Tracked repos:${RESET}"
+    cat "$REPO_LIST"
+  else
+    echo -e "${YELLOW}⚠️ No tracked repos.${RESET}"
+  fi
+}
 
-  grep -qxF "$PWD" "$repolist" || echo "$PWD" >> "$repolist"
-  echo "$now | $PWD | synced to $platform on branch $branch" >> "$logfile"
+perform_pull_only() {
+  local branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
+  echo -e "${BLUE}🔄 Pulling latest changes from $branch...${RESET}"
+  git pull origin "$branch"
+}
+
+perform_dry_run() {
+  local branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
+  echo -e "${BLUE}🚀 Dry-run: git push origin $branch${RESET}"
+  git push --dry-run origin "$branch"
 }
