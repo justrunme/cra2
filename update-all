@@ -1,0 +1,29 @@
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/modules/colors.sh"
+source "$SCRIPT_DIR/modules/utils.sh"
+source "$SCRIPT_DIR/modules/config.sh"
+source "$SCRIPT_DIR/modules/logger.sh"
+source "$SCRIPT_DIR/modules/platform.sh"
+
+NOW=$(date "+%Y-%m-%d %H:%M:%S")
+echo -e "${BLUE}🔁 Running update-all at $NOW${RESET}"
+
+while read -r repo; do
+  [ -z "$repo" ] && continue
+  if [ ! -d "$repo/.git" ]; then
+    log_error "$repo is not a git repo, skipping."
+    continue
+  fi
+  cd "$repo"
+  echo -e "${YELLOW}📁 Syncing: $repo${RESET}"
+  branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
+  git add . &>/dev/null
+  git commit -m "Auto-sync at $NOW" &>/dev/null || true
+  git pull origin "$branch" --rebase &>/dev/null || true
+  git push origin "$branch" &>/dev/null && log_success "$repo synced." || log_error "$repo push failed."
+done < "$HOME/.repo-autosync.list"
+
+echo -e "${GREEN}✅ All repos processed${RESET}"
