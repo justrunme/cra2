@@ -1,4 +1,12 @@
+#!/bin/bash
 
-log_info() {
-  echo -e "\e[34m[INFO]\e[0m $1"
+log_success() {
+  echo -e "${GREEN}✔ $1${RESET}"
+  echo "$NOW | SUCCESS | $1" >> "$LOG_FILE"
 }
+
+log_error() {
+  echo -e "${RED}✖ $1${RESET}"
+  echo "$NOW | ERROR | $1" >> "$ERROR_LOG"
+}
+

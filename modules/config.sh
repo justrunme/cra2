@@ -1,7 +1,19 @@
+#!/bin/bash
 
-CONFIG_FILE="$HOME/.create-repo.conf"
-PLATFORM_MAP="$HOME/.create-repo.platforms"
-REPO_LIST="$HOME/.repo-autosync.list"
-LOG_FILE="$HOME/.create-repo.log"
-ERROR_LOG="$HOME/.create-repo-errors.log"
-LOCAL_CONFIG_FILE=".create-repo.local.conf"
+load_config() {
+  if [[ -f "$LOCAL_CONFIG_FILE" ]]; then
+    source "$LOCAL_CONFIG_FILE"
+  elif [[ -f "$CONFIG_FILE" ]]; then
+    source "$CONFIG_FILE"
+  fi
+}
+
+save_config() {
+  local file="$1"
+  cat > "$file" <<EOF
+default_visibility=${default_visibility:-public}
+default_cron_interval=${default_cron_interval:-1}
+default_team=${default_team}
+default_branch=${default_branch:-main}
+EOF
+}

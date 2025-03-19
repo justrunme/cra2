@@ -3,10 +3,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/modules/colors.sh"
-source "$SCRIPT_DIR/modules/utils.sh"
-source "$SCRIPT_DIR/modules/config.sh"
 source "$SCRIPT_DIR/modules/logger.sh"
-source "$SCRIPT_DIR/modules/platform.sh"
+source "$SCRIPT_DIR/modules/utils.sh"
 
 NOW=$(date "+%Y-%m-%d %H:%M:%S")
 echo -e "${BLUE}🔁 Running update-all at $NOW${RESET}"

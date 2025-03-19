@@ -1,56 +1,15 @@
 #!/bin/bash
 set -e
 
-DIR="$(dirname "$0")"
-NOW=$(date "+%Y-%m-%d %H:%M:%S")
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/modules/colors.sh"
+source "$SCRIPT_DIR/modules/flags.sh"
+source "$SCRIPT_DIR/modules/version.sh"
+source "$SCRIPT_DIR/modules/update.sh"
+source "$SCRIPT_DIR/modules/help.sh"
+source "$SCRIPT_DIR/modules/config.sh"
+source "$SCRIPT_DIR/modules/platform.sh"
+source "$SCRIPT_DIR/modules/repo.sh"
+source "$SCRIPT_DIR/modules/logger.sh"
 
-# Source modules
-source "$DIR/colors.sh"
-source "$DIR/flags.sh"
-source "$DIR/version.sh"
-source "$DIR/update.sh"
-source "$DIR/config.sh"
-source "$DIR/platform.sh"
-source "$DIR/git.sh"
-source "$DIR/logging.sh"
-
-validate_flags "$@"
-
-repo=""
-platform_flag=""
-branch="main"
-visibility="public"
-interactive=false
-show_help=false
-show_version=false
-run_update=false
-show_platform_status=false
-
-# Parse args
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --help|-h) show_help=true ;;
-    --interactive) interactive=true ;;
-    --platform=*) platform_flag="${1#*=}" ;;
-    --platform-status) show_platform_status=true ;;
-    --update) run_update=true ;;
-    --version) show_version=true ;;
-    *) [[ -z "$repo" ]] && repo=$1 ;;
-  esac
-  shift
-done
-
-$show_version && show_version && exit 0
-$run_update && check_for_update && exit 0
-$show_help && echo -e "${BLUE}Usage: create-repo [name] [--platform=...] --help --version ...${RESET}" && exit 0
-
-CURRENT_FOLDER=$(realpath "$PWD")
-load_config
-platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag")
-[[ -z "$platform" ]] && echo -e "${RED}❌ No Git platform detected.${RESET}" && exit 1
-repo=${repo:-$(basename "$PWD")}
-branch=${default_branch:-main}
-visibility=${default_visibility:-public}
-
-git_init_repo "$repo" "$branch" "$platform" "$visibility" "$NOW" "$HOME/.create-repo.log" "$HOME/.repo-autosync.list"
-show_final_message "$repo" "$branch" "$PWD" "$HOME/.repo-autosync.list" "$platform"
+main "$@"

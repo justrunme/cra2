@@ -1,32 +1,31 @@
+#!/bin/bash
+
 detect_platform() {
-  local folder="$1"
-  local flag="$2"
-  local map="$HOME/.create-repo.platforms"
-
-  if [[ -n "$flag" ]]; then
-    echo "$folder=$flag" >> "$map"
-    echo "$flag"
-    return
+  if [[ -n "$platform_flag" ]]; then
+    platform="$platform_flag"
+    echo "$CURRENT_FOLDER=$platform" >> "$PLATFORM_MAP"
+  elif [[ -f "$PLATFORM_MAP" ]]; then
+    platform=$(grep "^$CURRENT_FOLDER=" "$PLATFORM_MAP" | cut -d= -f2)
   fi
 
-  if [[ -f "$map" ]]; then
-    local saved=$(grep "^$folder=" "$map" | cut -d= -f2)
-    [[ -n "$saved" ]] && echo "$saved" && return
+  if [[ -z "$platform" ]]; then
+    available=()
+    [[ -x "$(command -v gh)" ]] && gh auth status &>/dev/null && available+=("github")
+    [[ -n "$GITLAB_TOKEN" ]] && available+=("gitlab")
+    [[ -n "$BITBUCKET_USERNAME" && -n "$BITBUCKET_APP_PASSWORD" ]] && available+=("bitbucket")
+
+    if [[ ${#available[@]} -eq 1 ]]; then
+      platform="${available[0]}"
+    elif [[ ${#available[@]} -gt 1 ]]; then
+      echo -ne "${YELLOW}❓ Choose platform [github/gitlab/bitbucket]: ${RESET}"
+      read chosen
+      platform="$chosen"
+      echo "$CURRENT_FOLDER=$platform" >> "$PLATFORM_MAP"
+    fi
   fi
 
-  local available=()
-  [[ -x "$(command -v gh)" ]] && gh auth status &>/dev/null && available+=("github")
-  [[ -n "$GITLAB_TOKEN" ]] && available+=("gitlab")
-  [[ -n "$BITBUCKET_USERNAME" && -n "$BITBUCKET_APP_PASSWORD" ]] && available+=("bitbucket")
-
-  if [[ ${#available[@]} -eq 1 ]]; then
-    echo "${available[0]}"
-  elif [[ ${#available[@]} -gt 1 ]]; then
-    echo -ne "${YELLOW}❓ Choose platform [github/gitlab/bitbucket]: ${RESET}"
-    read chosen
-    echo "$folder=$chosen" >> "$map"
-    echo "$chosen"
-  else
-    echo ""
+  if [[ -z "$platform" ]]; then
+    echo -e "${RED}❌ No Git platform detected.${RESET}"
+    exit 1
   fi
 }
