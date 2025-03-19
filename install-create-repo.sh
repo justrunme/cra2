@@ -19,10 +19,11 @@ fi
 mkdir -p "$INSTALL_ROOT/modules"
 curl -fsSL "$RAW_URL/create-repo" -o "$INSTALL_ROOT/create-repo"
 curl -fsSL "$RAW_URL/update-all" -o "$INSTALL_ROOT/update-all"
-chmod +x "$INSTALL_ROOT/create-repo" "$INSTALL_ROOT/update-all"
+curl -fsSL "$RAW_URL/install-create-repo.sh" -o "$INSTALL_ROOT/install-create-repo.sh"
+chmod +x "$INSTALL_ROOT/create-repo" "$INSTALL_ROOT/update-all" "$INSTALL_ROOT/install-create-repo.sh"
 
 # ⬇️ Download all modules
-modules=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh)
+modules=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh)
 for mod in "${modules[@]}"; do
   echo "⬇️  Downloading module: $mod"
   curl -fsSL "$RAW_URL/modules/$mod" -o "$INSTALL_ROOT/modules/$mod"
@@ -33,11 +34,11 @@ ln -sf "$INSTALL_ROOT/create-repo" "$BIN_PATH/create-repo"
 ln -sf "$INSTALL_ROOT/create-repo" "$BIN_PATH/cra"
 ln -sf "$INSTALL_ROOT/update-all" "$BIN_PATH/update-all"
 
-# ✅ Update scripts to use absolute module paths
-sed -i 's|source "$SCRIPT_DIR/modules/|source "/opt/cra2/modules/|g' "$INSTALL_ROOT/create-repo"
-sed -i 's|source "$SCRIPT_DIR/modules/|source "/opt/cra2/modules/|g' "$INSTALL_ROOT/update-all"
+# ✅ Rewrite internal source paths to absolute
+sed -i 's|source "\$SCRIPT_DIR/modules/|source "/opt/cra2/modules/|g' "$INSTALL_ROOT/create-repo"
+sed -i 's|source "\$SCRIPT_DIR/modules/|source "/opt/cra2/modules/|g' "$INSTALL_ROOT/update-all"
 
-# ⚙️ Configs
+# ⚙️ Config files
 CONFIG_FILE="$HOME/.create-repo.conf"
 REPO_LIST="$HOME/.repo-autosync.list"
 
@@ -52,7 +53,7 @@ EOF
 INTERVAL=$(grep default_cron_interval "$CONFIG_FILE" | cut -d= -f2)
 INTERVAL=${INTERVAL:-1}
 
-# ♻️ Setup auto-sync (macOS or Linux)
+# ♻️ Setup auto-sync
 if [[ "$OSTYPE" == "darwin"* ]]; then
   plist="$HOME/Library/LaunchAgents/com.create-repo.auto.plist"
   cat > "$plist" <<EOF
@@ -82,7 +83,7 @@ fi
 # ✅ Final message
 echo ""
 echo "✅ create-repo successfully installed!"
-echo "📂 Binary path:   $INSTALL_ROOT"
+echo "📂 Installed to:  $INSTALL_ROOT"
 echo "🔗 Commands:      create-repo (cra), update-all"
 echo "🔁 Auto-sync:     every $INTERVAL min"
 echo "⚙️  Config file:   $CONFIG_FILE"
