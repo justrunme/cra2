@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-INSTALL_PATH="/usr/local/bin"
+INSTALL_BIN="/usr/local/bin"
+INSTALL_LIB="/usr/local/lib/create-repo"
 RAW_URL="https://raw.githubusercontent.com/justrunme/cra/main"
 NOW=$(date +"%Y-%m-%dT%H:%M:%S%z")
 
@@ -13,23 +14,50 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# Download main files
-curl -fsSL "$RAW_URL/create-repo" -o "$INSTALL_PATH/create-repo"
-curl -fsSL "$RAW_URL/update-all" -o "$INSTALL_PATH/update-all"
-chmod +x "$INSTALL_PATH/create-repo" "$INSTALL_PATH/update-all"
+# Create target folders
+mkdir -p "$INSTALL_LIB"
+mkdir -p "$INSTALL_BIN"
 
-# Download modules
-MODULES=(colors.sh config.sh flags.sh help.sh logger.sh platform.sh repo.sh update.sh utils.sh version.sh)
-mkdir -p "$INSTALL_PATH/modules"
+# Download core files
+curl -fsSL "$RAW_URL/create-repo" -o "$INSTALL_LIB/create-repo"
+curl -fsSL "$RAW_URL/update-all" -o "$INSTALL_LIB/update-all"
+chmod +x "$INSTALL_LIB/create-repo" "$INSTALL_LIB/update-all"
+
+# Download all modules
+MODULES=(
+  colors.sh
+  config.sh
+  flags.sh
+  help.sh
+  logger.sh
+  platform.sh
+  repo.sh
+  update.sh
+  utils.sh
+  version.sh
+)
+
+mkdir -p "$INSTALL_LIB/modules"
+
 for mod in "${MODULES[@]}"; do
-  curl -fsSL "$RAW_URL/modules/$mod" -o "$INSTALL_PATH/modules/$mod"
+  curl -fsSL "$RAW_URL/modules/$mod" -o "$INSTALL_LIB/modules/$mod"
 done
 
-chmod +x "$INSTALL_PATH/modules/"*.sh
+# Create wrapper in /usr/local/bin
+cat > "$INSTALL_BIN/create-repo" <<EOF
+#!/bin/bash
+exec /usr/local/lib/create-repo/create-repo "\$@"
+EOF
 
-# Create config if not exist
+chmod +x "$INSTALL_BIN/create-repo"
+
+# Create shortcut
+ln -sf "$INSTALL_BIN/create-repo" "$INSTALL_BIN/cra"
+
+# Create user config files if missing
 CONFIG_FILE="$HOME/.create-repo.conf"
 REPO_LIST="$HOME/.repo-autosync.list"
+
 [ ! -f "$CONFIG_FILE" ] && cat <<EOF > "$CONFIG_FILE"
 default_cron_interval=1
 default_visibility=public
@@ -37,13 +65,11 @@ EOF
 
 [ ! -f "$REPO_LIST" ] && touch "$REPO_LIST"
 
-# Get sync interval
 INTERVAL=$(grep default_cron_interval "$CONFIG_FILE" | cut -d= -f2)
 INTERVAL=${INTERVAL:-1}
 
-# Setup autosync
+# Setup auto-sync
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  # macOS — launchd
   plist="$HOME/Library/LaunchAgents/com.create-repo.auto.plist"
   cat > "$plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -54,7 +80,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   <string>com.create-repo.auto</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$INSTALL_PATH/update-all</string>
+    <string>$INSTALL_LIB/update-all</string>
   </array>
   <key>StartInterval</key>
   <integer>$((INTERVAL * 60))</integer>
@@ -66,25 +92,15 @@ EOF
   launchctl unload "$plist" &>/dev/null || true
   launchctl load "$plist"
 else
-  # Linux — cron
-  (crontab -l 2>/dev/null; echo "*/$INTERVAL * * * * $INSTALL_PATH/update-all # auto-sync") | sort -u | crontab -
+  (crontab -l 2>/dev/null; echo "*/$INTERVAL * * * * $INSTALL_LIB/update-all # auto-sync") | sort -u | crontab -
 fi
 
-# Symlink for cra alias
-ln -sf "$INSTALL_PATH/create-repo" "$INSTALL_PATH/cra"
-
-# Get latest version from GitHub
 VERSION=$(curl -s https://api.github.com/repos/justrunme/cra/releases/latest | jq -r .tag_name)
 
-# ✅ Success message
 echo ""
-echo "✅ create-repo installed successfully!"
-echo "📂 create-repo : $INSTALL_PATH/create-repo"
-echo "📂 update-all  : $INSTALL_PATH/update-all"
-echo "📁 modules     : $INSTALL_PATH/modules/"
-echo "🔗 Alias       : cra"
-echo "🔁 Auto-sync   : every $INTERVAL min"
-echo "📝 Config      : $CONFIG_FILE"
-echo "📁 Repo list   : $REPO_LIST"
-echo "🔖 Version     : $VERSION"
-echo "🧠 Try now:     cra --interactive"
+echo "✅ create-repo installed!"
+echo "📂 Main:       $INSTALL_BIN/create-repo"
+echo "📂 Lib path:   $INSTALL_LIB/"
+echo "🔁 Auto-sync:  every $INTERVAL min"
+echo "🧠 Try:        cra --interactive"
+echo "🔖 Version:    $VERSION"
