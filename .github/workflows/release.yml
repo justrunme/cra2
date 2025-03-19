@@ -19,14 +19,12 @@ jobs:
         run: |
           git fetch --tags
           latest=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n1)
-
           if [[ -z "$latest" ]]; then
             major=1; minor=0; patch=0
           else
             IFS='.' read -r major minor patch <<< "$latest"
             patch=$((patch + 1))
           fi
-
           version="v$major.$minor.$patch"
           git tag -f "$version"
           git push origin -f "$version"
@@ -46,14 +44,17 @@ jobs:
           mkdir -p pkg/usr/local/bin
           mkdir -p pkg/usr/local/bin/modules
           mkdir -p pkg/DEBIAN
-
+          
+          # ✅ Копируем файлы
           cp create-repo pkg/usr/local/bin/
           cp update-all pkg/usr/local/bin/
+          cp modules/*.sh pkg/usr/local/bin/modules/
           chmod +x pkg/usr/local/bin/*
 
-          cp modules/*.sh pkg/usr/local/bin/modules/
+          # ✅ Подставляем версию
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
 
+          # ✅ Создаём control-файл
           cat > pkg/DEBIAN/control <<EOF
 Package: create-repo
 Version: ${VERSION#v}
@@ -64,10 +65,14 @@ Maintainer: you@example.com
 Description: Git auto-sync CLI with modular structure
 EOF
 
-          echo "#!/bin/bash" > pkg/DEBIAN/postinst
-          echo "echo Installed create-repo v${VERSION#v}" >> pkg/DEBIAN/postinst
+          # ✅ Создаём postinst-файл (постустановка)
+          cat > pkg/DEBIAN/postinst <<EOF
+#!/bin/bash
+echo "✅ Installed create-repo v${VERSION#v}"
+EOF
           chmod +x pkg/DEBIAN/postinst
 
+          # ✅ Сборка DEB-пакета
           dpkg-deb --build pkg
           mv pkg.deb create-repo_${VERSION#v}.deb
 
@@ -78,7 +83,6 @@ EOF
           name: Release ${{ needs.autotag.outputs.version }}
           body: |
             🔄 Auto-generated release
-
             ✏️ Version: ${{ needs.autotag.outputs.version }}
             📦 Includes .deb and .pkg packages.
           files: |
@@ -97,14 +101,15 @@ EOF
           VERSION="${{ needs.autotag.outputs.version }}"
           mkdir -p pkg-root/usr/local/bin
           mkdir -p pkg-root/usr/local/bin/modules
-
           cp create-repo pkg-root/usr/local/bin/
           cp update-all pkg-root/usr/local/bin/
           cp modules/*.sh pkg-root/usr/local/bin/modules/
           chmod +x pkg-root/usr/local/bin/*
-
+          
+          # ✅ Подставляем версию
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
-
+          
+          # ✅ Создаём macOS .pkg
           pkgbuild \
             --identifier com.justrunme.create-repo \
             --version ${VERSION#v} \
