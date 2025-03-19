@@ -2,6 +2,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 🔗 Подключение модулей
 source "$SCRIPT_DIR/modules/colors.sh"
 source "$SCRIPT_DIR/modules/flags.sh"
 source "$SCRIPT_DIR/modules/version.sh"
@@ -13,13 +15,12 @@ source "$SCRIPT_DIR/modules/repo.sh"
 source "$SCRIPT_DIR/modules/logger.sh"
 source "$SCRIPT_DIR/modules/status.sh"
 
+# 🏁 Основная функция
 main() {
   validate_flags "$@"
 
   repo=""
   platform_flag=""
-  branch="main"
-  visibility="public"
   interactive=false
   show_help=false
   show_version=false
@@ -32,7 +33,6 @@ main() {
   dry_run=false
   sync_now=false
 
-  # Parse args
   while [[ $# -gt 0 ]]; do
     case $1 in
       --help|-h) show_help=true ;;
@@ -59,19 +59,21 @@ main() {
   $show_status && show_git_status && exit 0
   $show_log && cat "$LOG_FILE" && exit 0
   $show_list && cat "$REPO_LIST" && exit 0
-  $pull_only && git pull && exit 0
-  $dry_run && echo "🔄 Dry run: would push to origin $branch" && exit 0
-  $sync_now && git add . && git commit -m "Manual sync $(date)" || true && git push && exit 0
+  $pull_only && git pull origin "$(git branch --show-current)" && exit 0
+  $dry_run && echo -e "${YELLOW}🔍 Dry-run push:${RESET}" && git status && exit 0
+  $sync_now && "$SCRIPT_DIR/update-all" && exit 0
 
   CURRENT_FOLDER=$(realpath "$PWD")
   load_config
+
   platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag")
   [[ -z "$platform" ]] && echo -e "${RED}❌ No Git platform detected.${RESET}" && exit 1
+
   repo=${repo:-$(basename "$PWD")}
   branch=${default_branch:-main}
   visibility=${default_visibility:-public}
 
-  git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date)" "$LOG_FILE" "$REPO_LIST"
+  git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
   show_final_message "$repo" "$branch" "$PWD" "$REPO_LIST" "$platform"
 }
 
