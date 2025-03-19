@@ -33,7 +33,6 @@ jobs:
   build-deb:
     runs-on: ubuntu-latest
     needs: autotag
-
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -44,26 +43,27 @@ jobs:
           mkdir -p pkg/usr/local/bin
           mkdir -p pkg/usr/local/bin/modules
           mkdir -p pkg/DEBIAN
+
           cp create-repo pkg/usr/local/bin/
           cp update-all pkg/usr/local/bin/
-          chmod +x pkg/usr/local/bin/*
           cp modules/*.sh pkg/usr/local/bin/modules/
+          chmod +x pkg/usr/local/bin/*
+
+          # Inject version
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
 
-          cat <<EOF > pkg/DEBIAN/control
-Package: create-repo
-Version: ${VERSION#v}
-Section: utils
-Priority: optional
-Architecture: all
-Maintainer: you@example.com
-Description: Git auto-sync CLI with modular structure
-EOF
+          # DEBIAN/control
+          echo "Package: create-repo" > pkg/DEBIAN/control
+          echo "Version: ${VERSION#v}" >> pkg/DEBIAN/control
+          echo "Section: utils" >> pkg/DEBIAN/control
+          echo "Priority: optional" >> pkg/DEBIAN/control
+          echo "Architecture: all" >> pkg/DEBIAN/control
+          echo "Maintainer: you@example.com" >> pkg/DEBIAN/control
+          echo "Description: Git auto-sync CLI with modular structure" >> pkg/DEBIAN/control
 
-          cat <<EOF > pkg/DEBIAN/postinst
-#!/bin/bash
-echo "✅ Installed create-repo v${VERSION#v}"
-EOF
+          # DEBIAN/postinst
+          echo "#!/bin/bash" > pkg/DEBIAN/postinst
+          echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
           chmod +x pkg/DEBIAN/postinst
 
           dpkg-deb --build pkg
@@ -84,7 +84,6 @@ EOF
   build-mac:
     runs-on: macos-latest
     needs: autotag
-
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -94,11 +93,14 @@ EOF
           VERSION="${{ needs.autotag.outputs.version }}"
           mkdir -p pkg-root/usr/local/bin
           mkdir -p pkg-root/usr/local/bin/modules
+
           cp create-repo pkg-root/usr/local/bin/
           cp update-all pkg-root/usr/local/bin/
           cp modules/*.sh pkg-root/usr/local/bin/modules/
           chmod +x pkg-root/usr/local/bin/*
+
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
+
           pkgbuild \
             --identifier com.justrunme.create-repo \
             --version ${VERSION#v} \
