@@ -8,10 +8,8 @@ on:
 jobs:
   autotag:
     runs-on: ubuntu-latest
-
     outputs:
       version: ${{ steps.set_version.outputs.version }}
-
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -31,9 +29,6 @@ jobs:
           git tag -f "$version"
           git push origin -f "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: 🧪 Debug: show version
-        run: echo "🔖 Version: ${{ steps.set_version.outputs.version }}"
 
   test:
     runs-on: ubuntu-latest
