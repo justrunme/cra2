@@ -3,11 +3,11 @@ set -e
 
 echo "🧪 Running smoke test..."
 
-cd "$(dirname "$0")"
+# Путь к скрипту относительно текущей папки test/
 REPO="../create-repo"
 
 if [ ! -x "$REPO" ]; then
-  echo "❌ create-repo not found at $REPO"
+  echo "❌ create-repo not found or not executable at $REPO"
   exit 1
 fi
 
