@@ -18,6 +18,7 @@ jobs:
 
       - name: 🔢 Generate version tag
         id: set_version
+        shell: bash
         run: |
           git fetch --tags
           latest=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n1)
@@ -30,7 +31,9 @@ jobs:
           version="v$major.$minor.$patch"
           git tag "$version"
           git push origin "$version"
-          echo "version=$version" | tee -a "$GITHUB_OUTPUT"
+          
+          # ✅ Пишем результат в GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: 🧪 Debug: show version
         run: echo "🔖 Version: ${{ steps.set_version.outputs.version }}"
