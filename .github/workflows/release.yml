@@ -1,0 +1,116 @@
+name: Auto Tag, Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  autotag:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔢 Auto tag version
+        id: tag
+        run: |
+          git fetch --tags
+          latest=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n1)
+          echo "Latest tag: $latest"
+          if [[ -z "$latest" ]]; then
+            major=1; minor=0; patch=0
+          else
+            IFS='.' read -r major minor patch <<< "$latest"
+            if [[ $patch -ge 100 ]]; then
+              patch=0
+              minor=$((minor + 1))
+            else
+              patch=$((patch + 1))
+            fi
+          fi
+          version="v$major.$minor.$patch"
+          git tag -f "$version"
+          git push origin -f "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build-deb:
+    needs: autotag
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🛠 Install DEB tools
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev
+
+      - name: 🏗 Inject version and prepare structure
+        run: |
+          VERSION="${{ needs.autotag.outputs.version }}"
+          mkdir -p pkg/usr/local/bin
+          mkdir -p pkg/DEBIAN
+          cp create-repo pkg/usr/local/bin/
+          cp update-all pkg/usr/local/bin/
+          chmod +x pkg/usr/local/bin/*
+          find modules -type f -name "*.sh" -exec mkdir -p "pkg/usr/local/bin/modules" \; -exec cp {} pkg/usr/local/bin/modules/ \;
+          sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
+
+          cat > pkg/DEBIAN/control <<EOF
+Package: create-repo
+Version: ${VERSION#v}
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: you@example.com
+Description: Git auto-sync CLI with modular structure
+EOF
+
+          echo "#!/bin/bash" > pkg/DEBIAN/postinst
+          echo "echo Installed create-repo v${VERSION#v}" >> pkg/DEBIAN/postinst
+          chmod +x pkg/DEBIAN/postinst
+
+          dpkg-deb --build pkg
+          mv pkg.deb create-repo_${VERSION#v}.deb
+
+      - name: 💾 Upload DEB to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.autotag.outputs.version }}
+          name: Release ${{ needs.autotag.outputs.version }}
+          files: |
+            create-repo_*.deb
+            install-create-repo.sh
+
+  build-pkg:
+    needs: autotag
+    runs-on: macos-latest
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🏗 Inject version and build .pkg
+        run: |
+          VERSION="${{ needs.autotag.outputs.version }}"
+          mkdir -p pkg-root/usr/local/bin
+          mkdir -p pkg-root/usr/local/bin/modules
+          cp create-repo pkg-root/usr/local/bin/
+          cp update-all pkg-root/usr/local/bin/
+          chmod +x pkg-root/usr/local/bin/*
+          find modules -type f -name "*.sh" -exec cp {} pkg-root/usr/local/bin/modules/ \;
+          sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
+
+          pkgbuild \
+            --identifier com.justrunme.create-repo \
+            --version ${VERSION#v} \
+            --install-location / \
+            --root pkg-root \
+            create-repo_${VERSION#v}.pkg
+
+      - name: 💾 Upload PKG to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.autotag.outputs.version }}
+          name: Release ${{ needs.autotag.outputs.version }}
+          files: create-repo_*.pkg
