@@ -8,8 +8,10 @@ on:
 jobs:
   autotag:
     runs-on: ubuntu-latest
+
     outputs:
       version: ${{ steps.set_version.outputs.version }}
+
     steps:
       - name: 📦 Checkout
         uses: actions/checkout@v4
@@ -29,6 +31,9 @@ jobs:
           git tag -f "$version"
           git push origin -f "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: 🧪 Debug: show version
+        run: echo "🔖 Version: ${{ steps.set_version.outputs.version }}"
 
   test:
     runs-on: ubuntu-latest
@@ -143,10 +148,13 @@ jobs:
     needs: [build-deb, build-mac]
     steps:
       - uses: actions/checkout@v4
+      - name: 🚀 Debug: Print version from autotag
+        run: echo "Version from autotag: ${{ needs.autotag.outputs.version }}"
+
       - name: 🚀 Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.autotag.outputs.version }}
+          tag_name: ${{ needs.autotag.outputs.version }}  # Тег, который должен быть создан
           name: Release ${{ needs.autotag.outputs.version }}
           body: |
             🔄 Auto-generated release
