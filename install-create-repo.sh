@@ -33,6 +33,10 @@ ln -sf "$INSTALL_ROOT/create-repo" "$BIN_PATH/create-repo"
 ln -sf "$INSTALL_ROOT/create-repo" "$BIN_PATH/cra"
 ln -sf "$INSTALL_ROOT/update-all" "$BIN_PATH/update-all"
 
+# ✅ Update scripts to use absolute module paths
+sed -i 's|source "$SCRIPT_DIR/modules/|source "/opt/cra2/modules/|g' "$INSTALL_ROOT/create-repo"
+sed -i 's|source "$SCRIPT_DIR/modules/|source "/opt/cra2/modules/|g' "$INSTALL_ROOT/update-all"
+
 # ⚙️ Configs
 CONFIG_FILE="$HOME/.create-repo.conf"
 REPO_LIST="$HOME/.repo-autosync.list"
@@ -83,4 +87,3 @@ echo "🔗 Commands:      create-repo (cra), update-all"
 echo "🔁 Auto-sync:     every $INTERVAL min"
 echo "⚙️  Config file:   $CONFIG_FILE"
 echo "📝 Repo tracker:  $REPO_LIST"
-
