@@ -1,0 +1,72 @@
+name: Build and Upload macOS PKG
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-pkg:
+    runs-on: macos-latest
+
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔧 Set up Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: 🔢 Determine latest tag
+        id: get_tag
+        run: |
+          git fetch --tags
+          tag=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+          echo "Latest tag: $tag"
+
+          if [[ -z "$tag" ]]; then
+            major=1; minor=0; patch=0
+          else
+            IFS='.' read -r major minor patch <<< "${tag#v}"
+            patch=$((patch + 1))
+          fi
+          new_tag="v$major.$minor.$patch"
+
+          git tag -f "$new_tag"
+          git push origin -f "$new_tag"
+
+          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+
+      - name: 🏗 Replace version in scripts
+        run: |
+          VERSION="${{ steps.get_tag.outputs.new_tag }}"
+          sed -i '' "s/{{VERSION}}/$VERSION/g" create-repo
+          sed -i '' "s/{{VERSION}}/$VERSION/g" update-all
+
+      - name: 🌧️ Build PKG
+        run: |
+          VERSION="${{ steps.get_tag.outputs.new_tag }}"
+          mkdir -p pkg-root/usr/local/bin
+          cp create-repo pkg-root/usr/local/bin/
+          cp update-all pkg-root/usr/local/bin/
+          chmod +x pkg-root/usr/local/bin/create-repo pkg-root/usr/local/bin/update-all
+
+          pkgbuild \
+            --identifier com.myorg.create-repo \
+            --version ${VERSION#v} \
+            --install-location / \
+            --root pkg-root \
+            create-repo_${VERSION#v}.pkg
+
+      - name: 🚀 Upload PKG to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_tag.outputs.new_tag }}
+          append_body: true
+          files: create-repo_*.pkg
+          body: |
+            🔄 Auto-build .pkg
+
+            ✏️ Changes:
+            - Auto-synced from main
