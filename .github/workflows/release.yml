@@ -50,13 +50,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 🧪 Debug list contents of modules/
+      - name: 🧪 DEBUG check all modules
         run: |
           echo "📂 modules/:"
           ls -la modules/
-
-      - name: ✅ Verify all modules before packaging
-        run: |
+          echo ""
           REQUIRED_MODULES=(
             colors.sh flags.sh version.sh update.sh help.sh config.sh
             platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
@@ -105,13 +103,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 🧪 Debug list contents of modules/ (mac)
+      - name: 🧪 DEBUG check all modules (mac)
         run: |
           echo "📂 modules/:"
           ls -la modules/
-
-      - name: ✅ Verify all modules before packaging (mac)
-        run: |
+          echo ""
           REQUIRED_MODULES=(
             colors.sh flags.sh version.sh update.sh help.sh config.sh
             platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
@@ -150,6 +146,7 @@ jobs:
     needs: [build-deb, build-mac]
     steps:
       - uses: actions/checkout@v4
+
       - name: 🚀 Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
