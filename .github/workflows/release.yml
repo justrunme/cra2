@@ -50,6 +50,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: ✅ Verify all modules before packaging
+        run: |
+          echo "📂 Contents of modules/:"
+          ls -la modules/
+
+          REQUIRED_MODULES=(
+            colors.sh flags.sh version.sh update.sh help.sh config.sh
+            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
+          )
+
+          for mod in "${REQUIRED_MODULES[@]}"; do
+            if [ ! -f "modules/$mod" ]; then
+              echo "❌ Missing module: $mod"
+              exit 1
+            fi
+          done
+
+          echo "✅ All required modules found"
+
       - name: 🛠 Build DEB
         run: |
           VERSION="${{ needs.autotag.outputs.version }}"
@@ -85,6 +104,25 @@ jobs:
     needs: [autotag, test]
     steps:
       - uses: actions/checkout@v4
+
+      - name: ✅ Verify all modules before packaging (mac)
+        run: |
+          echo "📂 Contents of modules/:"
+          ls -la modules/
+
+          REQUIRED_MODULES=(
+            colors.sh flags.sh version.sh update.sh help.sh config.sh
+            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
+          )
+
+          for mod in "${REQUIRED_MODULES[@]}"; do
+            if [ ! -f "modules/$mod" ]; then
+              echo "❌ Missing module: $mod"
+              exit 1
+            fi
+          done
+
+          echo "✅ All required modules found"
 
       - name: 🌧️ Build PKG
         run: |
