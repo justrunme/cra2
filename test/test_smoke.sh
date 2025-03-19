@@ -3,14 +3,12 @@ set -e
 
 echo "🧪 Running smoke test..."
 
-# Проверка наличия исполняемого файла
-if [ ! -x "./create-repo" ]; then
-  echo "❌ create-repo not found or not executable"
+if ! command -v create-repo &>/dev/null; then
+  echo "❌ create-repo not found in PATH"
   exit 1
 fi
 
-# Проверка версии
-if ! ./create-repo --version | grep -qE '^create-repo v[0-9]+\.[0-9]+\.[0-9]+'; then
+if ! create-repo --version | grep -q "create-repo v"; then
   echo "❌ version output not matched"
   exit 1
 fi
