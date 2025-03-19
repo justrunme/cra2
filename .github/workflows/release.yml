@@ -50,23 +50,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: ✅ Verify all modules before packaging
+      - name: 🧪 Debug list contents of modules/
         run: |
-          echo "📂 Contents of modules/:"
+          echo "📂 modules/:"
           ls -la modules/
 
+      - name: ✅ Verify all modules before packaging
+        run: |
           REQUIRED_MODULES=(
             colors.sh flags.sh version.sh update.sh help.sh config.sh
             platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
           )
-
           for mod in "${REQUIRED_MODULES[@]}"; do
             if [ ! -f "modules/$mod" ]; then
               echo "❌ Missing module: $mod"
               exit 1
             fi
           done
-
           echo "✅ All required modules found"
 
       - name: 🛠 Build DEB
@@ -105,23 +105,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: ✅ Verify all modules before packaging (mac)
+      - name: 🧪 Debug list contents of modules/ (mac)
         run: |
-          echo "📂 Contents of modules/:"
+          echo "📂 modules/:"
           ls -la modules/
 
+      - name: ✅ Verify all modules before packaging (mac)
+        run: |
           REQUIRED_MODULES=(
             colors.sh flags.sh version.sh update.sh help.sh config.sh
             platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
           )
-
           for mod in "${REQUIRED_MODULES[@]}"; do
             if [ ! -f "modules/$mod" ]; then
               echo "❌ Missing module: $mod"
               exit 1
             fi
           done
-
           echo "✅ All required modules found"
 
       - name: 🌧️ Build PKG
