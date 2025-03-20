@@ -18,7 +18,6 @@ jobs:
         id: set_version
         shell: bash
         run: |
-          # Fetch existing tags
           git fetch --tags
           latest=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n1)
           if [[ -z "$latest" ]]; then
@@ -28,7 +27,6 @@ jobs:
             patch=$((patch + 1))
           fi
           version="v$major.$minor.$patch"
-          # Force-create and push the tag
           git tag -f "$version"
           git push origin -f "$version"
           echo "version=$version" >> $GITHUB_OUTPUT
@@ -57,12 +55,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Debug: List modules folder
-        run: |
-          echo "Modules folder content:"
-          ls -la modules/
-
-      - name: Verify required modules (Linux)
+      - name: Verify required modules
         run: |
           REQUIRED_MODULES=(
             colors.sh flags.sh version.sh update.sh help.sh config.sh
@@ -107,11 +100,6 @@ EOF
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Debug: List modules folder (macOS)
-        run: |
-          echo "Modules folder content:"
-          ls -la modules/
-
       - name: Verify required modules (macOS)
         run: |
           REQUIRED_MODULES=(
@@ -149,8 +137,8 @@ EOF
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Debug: Print version from autotag
-        run: echo "Version from autotag: ${{ needs.autotag.outputs.version }}"
+      - name: Print version
+        run: echo "Version: ${{ needs.autotag.outputs.version }}"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
