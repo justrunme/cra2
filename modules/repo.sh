@@ -1,36 +1,49 @@
-#!/bin/bash
+print_repo_list() {
+  local list_file="$HOME/.repo-autosync.list"
+  [[ ! -s "$list_file" ]] && echo "No repositories found." && return
 
-show_repo_status() {
-  echo -e "${BLUE}📦 Git status for $(basename "$PWD")${RESET}"
-  git status
+  echo -e "INDEX\tPLATFORM\tBRANCH\t\tPATH"
+  echo "----------------------------------------------------------"
+
+  local index=1
+  while IFS= read -r path; do
+    [[ -z "$path" ]] && continue
+    local platform branch
+    platform=$(detect_platform_from_config "$path")
+    branch=$(git -C "$path" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    printf "[%d]\t%s\t\t%s\t%s\n" "$index" "$platform" "$branch" "$path"
+    ((index++))
+  done < "$list_file"
 }
 
-show_log() {
-  if [[ -f "$LOG_FILE" ]]; then
-    echo -e "${BLUE}📜 Sync log:${RESET}"
-    cat "$LOG_FILE"
-  else
-    echo -e "${YELLOW}⚠️ No log file found.${RESET}"
-  fi
+detect_platform_from_config() {
+  local remote=$(git -C "$1" remote get-url origin 2>/dev/null)
+  [[ "$remote" == *github.com* ]] && echo "GitHub" && return
+  [[ "$remote" == *gitlab.com* ]] && echo "GitLab" && return
+  [[ "$remote" == *bitbucket.org* ]] && echo "Bitbucket" && return
+  echo "Unknown"
 }
 
-show_list() {
-  if [[ -f "$REPO_LIST" ]]; then
-    echo -e "${BLUE}📁 Tracked repos:${RESET}"
-    cat "$REPO_LIST"
-  else
-    echo -e "${YELLOW}⚠️ No tracked repos.${RESET}"
-  fi
+print_status_all() {
+  echo "Checking status of all tracked repositories..."
+  while IFS= read -r path; do
+    echo "===== $path ====="
+    git -C "$path" status
+    echo
+  done < "$HOME/.repo-autosync.list"
 }
 
-perform_pull_only() {
-  local branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
-  echo -e "${BLUE}🔄 Pulling latest changes from $branch...${RESET}"
-  git pull origin "$branch"
+remove_repo_force() {
+  local target="$1"
+  sed -i "\|$target|d" "$HOME/.repo-autosync.list"
+  echo "$target removed from autosync list."
 }
 
-perform_dry_run() {
-  local branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "main")
-  echo -e "${BLUE}🚀 Dry-run: git push origin $branch${RESET}"
-  git push --dry-run origin "$branch"
+generate_readme() {
+  [[ ! -f README.md ]] && echo "# $(basename "$PWD")" > README.md
+}
+
+generate_gitignore() {
+  [[ -f .gitignore ]] && return
+  echo -e "*.log\nnode_modules/\n.env\ndist/\n__pycache__/" > .gitignore
 }
