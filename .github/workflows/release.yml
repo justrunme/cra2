@@ -16,7 +16,6 @@ jobs:
 
       - name: Generate version tag
         id: set_version
-        shell: bash
         run: |
           git fetch --tags
           latest=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n1)
@@ -57,17 +56,16 @@ jobs:
           cp create-repo update-all install-create-repo.sh pkg/usr/local/bin/
           cp modules/*.sh pkg/usr/local/bin/modules/
           chmod +x pkg/usr/local/bin/*
+
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
 
-          cat <<EOF > pkg/DEBIAN/control
-Package: create-repo
-Version: ${VERSION#v}
-Section: utils
-Priority: optional
-Architecture: all
-Maintainer: you@example.com
-Description: Git auto-sync CLI with modular structure
-EOF
+          echo "Package: create-repo" > pkg/DEBIAN/control
+          echo "Version: ${VERSION#v}" >> pkg/DEBIAN/control
+          echo "Section: utils" >> pkg/DEBIAN/control
+          echo "Priority: optional" >> pkg/DEBIAN/control
+          echo "Architecture: all" >> pkg/DEBIAN/control
+          echo "Maintainer: you@example.com" >> pkg/DEBIAN/control
+          echo "Description: Git auto-sync CLI with modular structure" >> pkg/DEBIAN/control
 
           echo "#!/bin/bash" > pkg/DEBIAN/postinst
           echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
