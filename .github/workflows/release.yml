@@ -1,4 +1,4 @@
-фname: Auto Tag, Test, Build and Release (DEB + macOS)
+name: Auto Tag, Build, Test and Release (DEB + macOS)
 
 on:
   push:
@@ -11,10 +11,10 @@ jobs:
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     steps:
-      - name: 📦 Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🔢 Generate version tag
+      - name: Generate version tag
         id: set_version
         run: |
           git fetch --tags
@@ -32,29 +32,29 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    needs: autotag
     steps:
-      - name: 📦 Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 🧪 Make scripts executable
-        run: chmod +x create-repo test/*.sh
-
-      - name: 🧪 Run tests
+      - name: Make scripts executable
         run: |
-          export CREATE_REPO_BIN=./create-repo
-          bash test/run-all-tests.sh
+          chmod +x create-repo
+          chmod +x test/*.sh
+
+      - name: Run all tests
+        run: bash test/run-all-tests.sh
 
   build-deb:
     runs-on: ubuntu-latest
     needs: [autotag, test]
     steps:
-      - name: 📦 Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: ✅ Verify required modules
+      - name: Verify required modules
         run: |
-          REQUIRED_MODULES=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh)
+          REQUIRED_MODULES=(
+            colors.sh flags.sh version.sh update.sh help.sh config.sh
+            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
+          )
           for mod in "${REQUIRED_MODULES[@]}"; do
             if [ ! -f "modules/$mod" ]; then
               echo "❌ Missing module: $mod"
@@ -62,7 +62,7 @@ jobs:
             fi
           done
 
-      - name: 📦 Build DEB package
+      - name: Build DEB package
         run: |
           VERSION="${{ needs.autotag.outputs.version }}"
           mkdir -p pkg/usr/local/bin/modules pkg/DEBIAN
@@ -93,12 +93,14 @@ EOF
     runs-on: macos-latest
     needs: [autotag, test]
     steps:
-      - name: 📦 Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: ✅ Verify required modules
+      - name: Verify required modules (macOS)
         run: |
-          REQUIRED_MODULES=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh)
+          REQUIRED_MODULES=(
+            colors.sh flags.sh version.sh update.sh help.sh config.sh
+            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
+          )
           for mod in "${REQUIRED_MODULES[@]}"; do
             if [ ! -f "modules/$mod" ]; then
               echo "❌ Missing module: $mod"
@@ -106,7 +108,7 @@ EOF
             fi
           done
 
-      - name: 📦 Build PKG package
+      - name: Build PKG package
         run: |
           VERSION="${{ needs.autotag.outputs.version }}"
           mkdir -p pkg-root/usr/local/bin/modules
@@ -122,28 +124,27 @@ EOF
             --root pkg-root \
             create-repo_${VERSION#v}.pkg
 
-          shasum -a 256 create-repo_*.pkg > checksums.txt
+          shasum -a 256 create-repo_*.pkg >> checksums.txt
 
   release:
     runs-on: ubuntu-latest
     needs: [build-deb, build-mac, autotag]
     steps:
-      - name: 📦 Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: 🚀 Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.autotag.outputs.version }}
           name: Release ${{ needs.autotag.outputs.version }}
-          body: |
-            🔄 Auto-generated release
-            ✏️ Version: ${{ needs.autotag.outputs.version }}
-            📦 Includes:
-            - create-repo
-            - update-all
-            - install-create-repo.sh
-            - All modules
+          body: >
+            🔄 Auto-generated release  
+            ✏️ Version: ${{ needs.autotag.outputs.version }}  
+            📦 Includes:  
+            - create-repo  
+            - update-all  
+            - install-create-repo.sh  
+            - All modules  
             - .deb and .pkg installers
           files: |
             create-repo_*.deb
