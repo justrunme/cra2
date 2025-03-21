@@ -1,4 +1,4 @@
-name: Auto Tag, Test, Build and Release (DEB + macOS)
+фname: Auto Tag, Test, Build and Release (DEB + macOS)
 
 on:
   push:
@@ -40,7 +40,7 @@ jobs:
       - name: 🧪 Make scripts executable
         run: chmod +x create-repo test/*.sh
 
-      - name: 🧪 Run all tests
+      - name: 🧪 Run tests
         run: |
           export CREATE_REPO_BIN=./create-repo
           bash test/run-all-tests.sh
@@ -96,7 +96,7 @@ EOF
       - name: 📦 Checkout
         uses: actions/checkout@v4
 
-      - name: ✅ Verify required modules (macOS)
+      - name: ✅ Verify required modules
         run: |
           REQUIRED_MODULES=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh)
           for mod in "${REQUIRED_MODULES[@]}"; do
@@ -122,7 +122,7 @@ EOF
             --root pkg-root \
             create-repo_${VERSION#v}.pkg
 
-          shasum -a 256 create-repo_*.pkg >> checksums.txt
+          shasum -a 256 create-repo_*.pkg > checksums.txt
 
   release:
     runs-on: ubuntu-latest
