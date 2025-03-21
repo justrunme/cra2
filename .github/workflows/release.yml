@@ -50,10 +50,7 @@ jobs:
 
       - name: ✅ Verify required modules
         run: |
-          REQUIRED_MODULES=(
-            colors.sh flags.sh version.sh update.sh help.sh config.sh
-            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
-          )
+          REQUIRED_MODULES=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh)
           for mod in "${REQUIRED_MODULES[@]}"; do
             if [ ! -f "modules/$mod" ]; then
               echo "❌ Missing module: $mod"
@@ -96,10 +93,7 @@ EOF
 
       - name: ✅ Verify required modules (macOS)
         run: |
-          REQUIRED_MODULES=(
-            colors.sh flags.sh version.sh update.sh help.sh config.sh
-            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
-          )
+          REQUIRED_MODULES=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh)
           for mod in "${REQUIRED_MODULES[@]}"; do
             if [ ! -f "modules/$mod" ]; then
               echo "❌ Missing module: $mod"
