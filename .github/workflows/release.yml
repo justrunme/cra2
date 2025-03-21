@@ -34,19 +34,23 @@ jobs:
     runs-on: ubuntu-latest
     needs: autotag
     steps:
-      - uses: actions/checkout@v4
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
 
-      - name: 🔧 Set executable permissions
+      - name: 🧪 Make scripts executable
         run: chmod +x create-repo test/*.sh
 
       - name: 🧪 Run all tests
-        run: CREATE_REPO_BIN=./create-repo bash test/run-all-tests.sh
+        run: |
+          export CREATE_REPO_BIN=./create-repo
+          bash test/run-all-tests.sh
 
   build-deb:
     runs-on: ubuntu-latest
     needs: [autotag, test]
     steps:
-      - uses: actions/checkout@v4
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
 
       - name: ✅ Verify required modules
         run: |
@@ -89,7 +93,8 @@ EOF
     runs-on: macos-latest
     needs: [autotag, test]
     steps:
-      - uses: actions/checkout@v4
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
 
       - name: ✅ Verify required modules (macOS)
         run: |
@@ -123,7 +128,8 @@ EOF
     runs-on: ubuntu-latest
     needs: [build-deb, build-mac, autotag]
     steps:
-      - uses: actions/checkout@v4
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
 
       - name: 🚀 Publish GitHub Release
         uses: softprops/action-gh-release@v2
