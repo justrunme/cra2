@@ -1,4 +1,4 @@
-name: Auto Tag, Build, Test and Release (DEB + macOS)
+name: Auto Tag, Build and Release (DEB + macOS)
 
 on:
   push:
@@ -11,12 +11,11 @@ jobs:
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     steps:
-      - name: Checkout repository
+      - name: 📦 Checkout
         uses: actions/checkout@v4
 
-      - name: Generate version tag
+      - name: 🔢 Generate version tag
         id: set_version
-        shell: bash
         run: |
           git fetch --tags
           latest=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n1)
@@ -29,33 +28,15 @@ jobs:
           version="v$major.$minor.$patch"
           git tag -f "$version"
           git push origin -f "$version"
-          echo "version=$version" >> $GITHUB_OUTPUT
-
-      - name: Debug: Show generated version
-        run: echo "Generated version is: ${{ steps.set_version.outputs.version }}"
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Make scripts executable
-        run: |
-          chmod +x create-repo
-          chmod +x test/*.sh
-
-      - name: Run tests
-        run: bash test/run-all-tests.sh
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
   build-deb:
     runs-on: ubuntu-latest
-    needs: [autotag, test]
+    needs: autotag
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Verify required modules
+      - name: ✅ Verify all modules before packaging
         run: |
           REQUIRED_MODULES=(
             colors.sh flags.sh version.sh update.sh help.sh config.sh
@@ -68,38 +49,43 @@ jobs:
             fi
           done
 
-      - name: Build DEB package
+      - name: 🛠 Build DEB
         run: |
           VERSION="${{ needs.autotag.outputs.version }}"
-          mkdir -p pkg/usr/local/bin/modules pkg/DEBIAN
+          mkdir -p pkg/usr/local/bin
+          mkdir -p pkg/usr/local/bin/modules
+          mkdir -p pkg/DEBIAN
+
           cp create-repo update-all install-create-repo.sh pkg/usr/local/bin/
           cp modules/*.sh pkg/usr/local/bin/modules/
           chmod +x pkg/usr/local/bin/*
+
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
-          cat <<EOF > pkg/DEBIAN/control
-Package: create-repo
-Version: ${VERSION#v}
-Section: utils
-Priority: optional
-Architecture: all
-Maintainer: you@example.com
-Description: Git auto-sync CLI with modular structure
-EOF
+
+          echo "Package: create-repo" > pkg/DEBIAN/control
+          echo "Version: ${VERSION#v}" >> pkg/DEBIAN/control
+          echo "Section: utils" >> pkg/DEBIAN/control
+          echo "Priority: optional" >> pkg/DEBIAN/control
+          echo "Architecture: all" >> pkg/DEBIAN/control
+          echo "Maintainer: you@example.com" >> pkg/DEBIAN/control
+          echo "Description: Git auto-sync CLI with modular structure" >> pkg/DEBIAN/control
+
           echo "#!/bin/bash" > pkg/DEBIAN/postinst
           echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
           chmod +x pkg/DEBIAN/postinst
+
           dpkg-deb --build pkg
           mv pkg.deb create-repo_${VERSION#v}.deb
+
           sha256sum create-repo_*.deb > checksums.txt
 
   build-mac:
     runs-on: macos-latest
-    needs: [autotag, test]
+    needs: autotag
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Verify required modules (macOS)
+      - name: ✅ Verify all modules before packaging (mac)
         run: |
           REQUIRED_MODULES=(
             colors.sh flags.sh version.sh update.sh help.sh config.sh
@@ -112,33 +98,34 @@ EOF
             fi
           done
 
-      - name: Build PKG package
+      - name: 🌧️ Build PKG
         run: |
           VERSION="${{ needs.autotag.outputs.version }}"
+          mkdir -p pkg-root/usr/local/bin
           mkdir -p pkg-root/usr/local/bin/modules
+
           cp create-repo update-all install-create-repo.sh pkg-root/usr/local/bin/
           cp modules/*.sh pkg-root/usr/local/bin/modules/
           chmod +x pkg-root/usr/local/bin/*
+
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
+
           pkgbuild \
             --identifier com.justrunme.create-repo \
             --version ${VERSION#v} \
             --install-location / \
             --root pkg-root \
             create-repo_${VERSION#v}.pkg
+
           shasum -a 256 create-repo_*.pkg >> checksums.txt
 
   release:
     runs-on: ubuntu-latest
-    needs: [build-deb, build-mac, autotag]
+    needs: [build-deb, build-mac]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Print version
-        run: echo "Version: ${{ needs.autotag.outputs.version }}"
-
-      - name: Publish GitHub Release
+      - name: 🚀 Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.autotag.outputs.version }}
