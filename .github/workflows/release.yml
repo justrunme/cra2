@@ -37,11 +37,11 @@ jobs:
       - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🧪 Run all tests
+      - name: 🧪 Run all tests from test/
         run: |
           chmod +x create-repo
           export CREATE_REPO_BIN="$PWD/create-repo"
-          chmod +x tests/*.sh
+          chmod +x test/*.sh
           for t in test/test_*.sh; do
             echo "▶️ Running $t"
             bash "$t"
@@ -53,11 +53,100 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: ✅ Verify required modules
+      - name: ✅ Verify required modules (Linux)
         run: |
           REQUIRED_MODULES=(
             colors.sh flags.sh version.sh update.sh help.sh config.sh
             platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
           )
           for mod in "${REQUIRED_MODULES[@]}"; do
-            if [ ! -f "modules/$mod"
+            if [ ! -f "modules/$mod" ]; then
+              echo "❌ Missing module: $mod"
+              exit 1
+            fi
+          done
+
+      - name: 📦 Build DEB package
+        run: |
+          VERSION="${{ needs.autotag.outputs.version }}"
+          mkdir -p pkg/usr/local/bin/modules pkg/DEBIAN
+          cp create-repo update-all install-create-repo.sh pkg/usr/local/bin/
+          cp modules/*.sh pkg/usr/local/bin/modules/
+          chmod +x pkg/usr/local/bin/*
+          sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
+          cat <<EOF > pkg/DEBIAN/control
+Package: create-repo
+Version: ${VERSION#v}
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: you@example.com
+Description: Git auto-sync CLI with modular structure
+EOF
+          echo "#!/bin/bash" > pkg/DEBIAN/postinst
+          echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
+          chmod +x pkg/DEBIAN/postinst
+          dpkg-deb --build pkg
+          mv pkg.deb create-repo_${VERSION#v}.deb
+          sha256sum create-repo_*.deb > checksums.txt
+
+  build-mac:
+    runs-on: macos-latest
+    needs: [autotag, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ✅ Verify required modules (macOS)
+        run: |
+          REQUIRED_MODULES=(
+            colors.sh flags.sh version.sh update.sh help.sh config.sh
+            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
+          )
+          for mod in "${REQUIRED_MODULES[@]}"; do
+            if [ ! -f "modules/$mod" ]; then
+              echo "❌ Missing module: $mod"
+              exit 1
+            fi
+          done
+
+      - name: 📦 Build PKG package
+        run: |
+          VERSION="${{ needs.autotag.outputs.version }}"
+          mkdir -p pkg-root/usr/local/bin/modules
+          cp create-repo update-all install-create-repo.sh pkg-root/usr/local/bin/
+          cp modules/*.sh pkg-root/usr/local/bin/modules/
+          chmod +x pkg-root/usr/local/bin/*
+          sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
+          pkgbuild \
+            --identifier com.justrunme.create-repo \
+            --version ${VERSION#v} \
+            --install-location / \
+            --root pkg-root \
+            create-repo_${VERSION#v}.pkg
+          shasum -a 256 create-repo_*.pkg >> checksums.txt
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-deb, build-mac, autotag]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🚀 Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.autotag.outputs.version }}
+          name: Release ${{ needs.autotag.outputs.version }}
+          body: |
+            🔄 Auto-generated release
+            ✏️ Version: ${{ needs.autotag.outputs.version }}
+            📦 Includes:
+            - create-repo
+            - update-all
+            - install-create-repo.sh
+            - All modules
+            - .deb and .pkg installers
+          files: |
+            create-repo_*.deb
+            create-repo_*.pkg
+            install-create-repo.sh
+            checksums.txt
