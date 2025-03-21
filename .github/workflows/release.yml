@@ -84,7 +84,6 @@ Architecture: all
 Maintainer: you@example.com
 Description: Git auto-sync CLI with modular structure
 EOF
-
           echo "#!/bin/bash" > pkg/DEBIAN/postinst
           echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
           chmod +x pkg/DEBIAN/postinst
