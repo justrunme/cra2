@@ -74,6 +74,7 @@ jobs:
           cp modules/*.sh pkg/usr/local/bin/modules/
           chmod +x pkg/usr/local/bin/*
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
+
           cat <<EOF > pkg/DEBIAN/control
 Package: create-repo
 Version: ${VERSION#v}
@@ -83,9 +84,11 @@ Architecture: all
 Maintainer: you@example.com
 Description: Git auto-sync CLI with modular structure
 EOF
+
           echo "#!/bin/bash" > pkg/DEBIAN/postinst
           echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
           chmod +x pkg/DEBIAN/postinst
+
           dpkg-deb --build pkg
           mv pkg.deb create-repo_${VERSION#v}.deb
           sha256sum create-repo_*.deb > checksums.txt
