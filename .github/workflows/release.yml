@@ -42,7 +42,7 @@ jobs:
           chmod +x create-repo
           export CREATE_REPO_BIN="$PWD/create-repo"
           chmod +x tests/*.sh
-          for t in tests/test_*.sh; do
+          for t in test/test_*.sh; do
             echo "▶️ Running $t"
             bash "$t"
           done
