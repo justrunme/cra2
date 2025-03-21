@@ -14,8 +14,10 @@ validate_flags() {
     --version
     --status
     --log
+    --log=errors
     --list
     --remove
+    --remove=--force
     --clean
     --share
     --team
@@ -23,14 +25,16 @@ validate_flags() {
     --pull-only
     --dry-run
     --sync-now
+    --doctor
   )
 
   for arg in "$@"; do
     if [[ "$arg" == --* ]]; then
+      # поддержка параметров вида --log=errors
       base="${arg%%=*}"
       match=false
       for valid in "${VALID_FLAGS[@]}"; do
-        [[ "$valid" == "$base" ]] && match=true && break
+        [[ "$valid" == "$base" || "$valid" == "$arg" ]] && match=true && break
       done
       if ! $match; then
         echo -e "${RED}❌ Unknown flag: $arg${RESET}"
