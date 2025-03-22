@@ -17,6 +17,7 @@ source "$SCRIPT_DIR/modules/repo.sh"
 source "$SCRIPT_DIR/modules/logger.sh"
 source "$SCRIPT_DIR/modules/doctor.sh"
 
+# 🏁 Основная функция
 main() {
   validate_flags "$@"
 
@@ -75,6 +76,7 @@ main() {
   branch=${default_branch:-main}
   visibility=${default_visibility:-public}
 
+  # Генерация README и .gitignore при инициализации
   generate_readme
   generate_gitignore
 
