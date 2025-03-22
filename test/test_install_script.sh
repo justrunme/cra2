@@ -2,28 +2,17 @@
 set -e
 set -x
 
-echo "🧪 Testing installation script: install-create-repo.sh"
+echo "🧪 Testing installation script: install-create-repo.sh with sudo..."
 
-# Очищаем потенциальные следы предыдущих установок
+# Очищаем возможные следы прошлой установки (требуется sudo)
 sudo rm -f /usr/local/bin/create-repo || true
 sudo rm -f /usr/local/bin/update-all || true
 sudo rm -rf /opt/cra2 || true
 
-# Скачиваем и запускаем
-curl -sSL https://raw.githubusercontent.com/justrunme/cra2/main/install-create-repo.sh | bash
+# Скачиваем и устанавливаем, запускаем с sudo
+curl -sSL https://raw.githubusercontent.com/justrunme/cra2/main/install-create-repo.sh | sudo bash
 
-# Проверяем, что скрипты появились
-if ! command -v create-repo &>/dev/null; then
-  echo "❌ create-repo not found in PATH after install"
-  exit 1
-fi
-
-if ! command -v update-all &>/dev/null; then
-  echo "❌ update-all not found in PATH after install"
-  exit 1
-fi
-
-# Проверяем корректную работу
+# Проверяем, что установилось
 create-repo --version
 update-all --help
 
