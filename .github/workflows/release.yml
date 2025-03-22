@@ -84,12 +84,10 @@ Maintainer: you@example.com
 Description: Git auto-sync CLI with modular structure
 EOF
 
-          cat <<EOF > pkg/DEBIAN/postinst
-#!/bin/bash
-echo ✅ Installed create-repo ${VERSION#v}
-EOF
-
+          echo '#!/bin/bash' > pkg/DEBIAN/postinst
+          echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
           chmod +x pkg/DEBIAN/postinst
+
           dpkg-deb --build pkg
           mv pkg.deb create-repo_${VERSION#v}.deb
           sha256sum create-repo_*.deb > checksums.txt
