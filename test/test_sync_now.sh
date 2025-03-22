@@ -11,18 +11,16 @@ cd "$TMP_DIR"
 # Инициализация git
 git init
 git config user.name "CI Bot"
-git config user.email "ci@local.test"
+git config user.email "ci@example.com"
 touch file.txt
-git add .
+git add file.txt
 git commit -m "Initial commit"
 
-# ✅ Безопасный фейковый remote (локальный путь)
+# 🔁 Добавим фейковый remote и установим upstream
 git remote add origin .
+git branch --set-upstream-to=origin/master master
 
-# Установка upstream (не обязательно, но можно)
-git branch --set-upstream-to=origin/master master || true
-
-# Тестируем команду
+# Запуск команды
 if "$BIN" --sync-now; then
   echo "✅ --sync-now test passed"
 else
