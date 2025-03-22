@@ -1,37 +1,29 @@
 #!/bin/bash
-set -e
-set -x
-trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
-
-# ✅ Базовая диагностика
-echo "✅ create-repo started"
-echo "📂 PWD: $PWD"
-echo "📄 FILE: $0"
-echo "👤 User: $(whoami)"
-echo "🕒 Time: $(date)"
+set -euxo pipefail
+trap 'echo "❌ ERROR at line $LINENO (exit code $?)" >&2' ERR
 
 SCRIPT_VERSION="{{VERSION}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "ℹ️ SCRIPT_DIR: $SCRIPT_DIR"
 
-# ✅ Экспорт переменных с дефолтами
+# Экспорт путей по умолчанию
 export PLATFORM_MAP="${PLATFORM_MAP:-$HOME/.create-repo.platforms}"
 export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
 export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 
-# ✅ Подключение модулей
-for module in colors flags version update help config platform repo logger doctor git; do
-  path="$SCRIPT_DIR/modules/$module.sh"
-  if [[ ! -f "$path" ]]; then
-    echo "❌ Module not found: $path"
+# Подключение модулей
+for file in colors flags version update help config platform repo logger doctor; do
+  mod="$SCRIPT_DIR/modules/$file.sh"
+  if [[ ! -f "$mod" ]]; then
+    echo "❌ Module not found: $mod"
     exit 1
   fi
-  echo "🔗 Loading module: $module"
-  source "$path"
+  echo "🔗 Loading module: $file.sh"
+  source "$mod"
 done
 
 main() {
-  echo "🚀 Entered main()"
+  echo "🚀 Running create-repo"
 
   validate_flags "$@"
 
@@ -40,6 +32,7 @@ main() {
   interactive=false
   dry_run=false
 
+  # Аргументы
   while [[ $# -gt 0 ]]; do
     case $1 in
       --help|-h) show_help; exit 0 ;;
@@ -60,9 +53,7 @@ main() {
           remove_repo_force "$(pwd)"; exit 0
         fi ;;
       --pull-only) perform_pull_only; exit 0 ;;
-      --dry-run)
-        export NO_PUSH=true
-        dry_run=true ;;
+      --dry-run) export NO_PUSH=true; dry_run=true ;;
       --sync-now) sync_now; exit 0 ;;
       --doctor) doctor_check; exit 0 ;;
       *) [[ -z "$repo" ]] && repo=$1 ;;
@@ -70,49 +61,52 @@ main() {
     shift
   done
 
-  export dry_run=${dry_run:-false}
-  echo "🧪 dry_run = $dry_run"
-  echo "🧪 platform_flag = $platform_flag"
+  export dry_run="${dry_run:-false}"
 
-  CURRENT_FOLDER=$(realpath "$PWD")
-  echo "📍 CURRENT_FOLDER = $CURRENT_FOLDER"
+  CURRENT_FOLDER="$(realpath "$PWD")"
+  echo "📁 Current folder: $CURRENT_FOLDER"
 
   load_config
 
-  platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")
-  echo "🔍 PLATFORM DETECTED = $platform"
+  echo "🧪 dry_run=$dry_run"
+  echo "🧪 platform_flag=$platform_flag"
+
+  # Определение платформы
+  platform="$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")"
+  echo "📦 Detected platform: $platform"
+
   [[ -z "$platform" ]] && platform="unknown"
 
   if [[ "$platform" == "unknown" ]]; then
     if [[ "$dry_run" == "true" ]]; then
-      echo -e "${YELLOW}⚠️ Platform unknown but continuing due to dry-run${RESET}"
+      echo -e "${YELLOW}⚠️ Platform is unknown, continuing due to dry-run.${RESET}"
     else
       echo -e "${RED}❌ No Git platform detected.${RESET}"
+      echo "📁 Folder: $CURRENT_FOLDER"
+      echo "📄 PLATFORM_MAP:"
+      cat "$PLATFORM_MAP" 2>/dev/null || echo "(not found)"
+      echo "🧪 platform_flag=$platform_flag"
       exit 1
     fi
   fi
 
+  # Параметры
   repo=${repo:-$(basename "$PWD")}
   branch=${default_branch:-main}
   visibility=${default_visibility:-public}
 
-  echo "📘 Repository = $repo"
-  echo "🌿 Branch     = $branch"
-  echo "🔐 Visibility = $visibility"
+  echo "📌 Repo: $repo"
+  echo "📌 Branch: $branch"
+  echo "📌 Visibility: $visibility"
 
-  # Диагностика текущего git состояния
-  echo "🧩 Git info:"
-  print_git_info || echo "⚠️ Git info not available"
-
+  # Инициализация структуры
   generate_readme
   generate_gitignore
-
   git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
-
   show_final_message "$repo" "$branch" "$PWD" "$REPO_LIST" "$platform"
 
   if [[ "$dry_run" == "true" ]]; then
-    echo -e "${YELLOW}✅ Dry-run completed. No changes were pushed.${RESET}"
+    echo -e "${YELLOW}This was a dry-run. No git push was executed.${RESET}"
   fi
 }
 
