@@ -3,23 +3,14 @@ set -e
 set -x
 trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 
-# ✅ Мини-диагностика запуска
-echo "✅ create-repo started"
-echo "📂 PWD: $PWD"
-echo "📄 BASENAME: $(basename "$0")"
-echo "📎 FILE: $0"
-echo "🔧 Running as user: $(whoami)"
-
 SCRIPT_VERSION="{{VERSION}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "ℹ️ SCRIPT_DIR resolved as: $SCRIPT_DIR"
 
-# ✅ Экспорт переменных (если unset)
 export PLATFORM_MAP="${PLATFORM_MAP:-$HOME/.create-repo.platforms}"
 export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
 export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 
-# ✅ Проверка и подключение модулей
+# Подключение модулей
 for file in colors flags version update help config platform repo logger doctor; do
   full="$SCRIPT_DIR/modules/$file.sh"
   if [[ ! -f "$full" ]]; then
@@ -30,9 +21,8 @@ for file in colors flags version update help config platform repo logger doctor;
   source "$full"
 done
 
-# 🏁 Основная функция
 main() {
-  echo "🚀 Entered main()"
+  echo "🚀 Starting create-repo"
 
   validate_flags "$@"
 
@@ -41,6 +31,7 @@ main() {
   interactive=false
   dry_run=false
 
+  # Обработка аргументов
   while [[ $# -gt 0 ]]; do
     case $1 in
       --help|-h) show_help; exit 0 ;;
@@ -54,17 +45,14 @@ main() {
         if [[ "$2" == "--errors" ]]; then
           tail -n 10 "$HOME/.create-repo-errors.log"; exit 0
         fi
-        tail -n 10 "$LOG_FILE"; exit 0
-        ;;
+        tail -n 10 "$LOG_FILE"; exit 0 ;;
       --list) print_repo_list; exit 0 ;;
       --remove)
         if [[ "$2" == "--force" ]]; then
           remove_repo_force "$(pwd)"; exit 0
         fi ;;
       --pull-only) perform_pull_only; exit 0 ;;
-      --dry-run)
-        export NO_PUSH=true
-        dry_run=true ;;
+      --dry-run) export NO_PUSH=true; dry_run=true ;;
       --sync-now) sync_now; exit 0 ;;
       --doctor) doctor_check; exit 0 ;;
       *) [[ -z "$repo" ]] && repo=$1 ;;
@@ -73,29 +61,22 @@ main() {
   done
 
   export dry_run=${dry_run:-false}
-  echo "🧪 dry_run flag: $dry_run"
-  echo "🧪 platform_flag: $platform_flag"
+  echo "🧪 dry_run: $dry_run"
 
   CURRENT_FOLDER=$(realpath "$PWD")
-  echo "🧭 current folder: $CURRENT_FOLDER"
-
   load_config
 
-  # 🧠 Определение платформы
+  # Платформа
   platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")
   echo "📦 Detected platform: $platform"
-
   [[ -z "$platform" ]] && platform="unknown"
 
-  if [[ "$platform" == "unknown" ]]; then
-    if [[ "$dry_run" == "true" ]]; then
-      echo -e "${YELLOW}⚠️ Platform is unknown, continuing due to dry-run.${RESET}"
-    else
-      echo -e "${RED}❌ No Git platform detected.${RESET}"; exit 1
-    fi
+  if [[ "$platform" == "unknown" && "$dry_run" != "true" ]]; then
+    echo -e "${RED}❌ No Git platform detected.${RESET}"
+    exit 1
   fi
 
-  # 🧱 Значения по умолчанию
+  # Основные значения
   repo=${repo:-$(basename "$PWD")}
   branch=${default_branch:-main}
   visibility=${default_visibility:-public}
@@ -103,14 +84,15 @@ main() {
   echo "📌 Branch: $branch"
   echo "📌 Visibility: $visibility"
 
-  # 📁 Инициализация структуры
   generate_readme
   generate_gitignore
+
   git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
+
   show_final_message "$repo" "$branch" "$PWD" "$REPO_LIST" "$platform"
 
   if [[ "$dry_run" == "true" ]]; then
-    echo -e "${YELLOW}This was a dry-run. No git push was executed.${RESET}"
+    echo -e "${YELLOW}⚠️ Dry-run mode: no git push was performed.${RESET}"
   fi
 }
 
