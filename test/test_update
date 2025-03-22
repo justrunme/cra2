@@ -1,0 +1,49 @@
+#!/bin/bash
+set -e
+set -x
+
+echo "🧪 Testing --update flow..."
+
+BIN="${CREATE_REPO_BIN:-./create-repo}"
+SCRIPT_DIR="$(dirname "$BIN")"
+
+# 1) Установим «старую» версию в version.sh (если возможно)
+OLD_VERSION="0.1.0"
+VERSION_FILE="$SCRIPT_DIR/modules/version.sh"
+
+if [ -f "$VERSION_FILE" ]; then
+  echo "ℹ️ Setting old version to $OLD_VERSION in $VERSION_FILE"
+  sed -i "s|SCRIPT_VERSION=.*|SCRIPT_VERSION=\"$OLD_VERSION\"|" "$VERSION_FILE"
+else
+  echo "⚠️ version.sh not found, skipping manual version override"
+fi
+
+# 2) Запустим create-repo --update
+# Предполагается, что он скачает новую версию (из GitHub Releases) и перезапишет файлы
+echo "🚀 Running create-repo --update"
+if ! "$BIN" --update; then
+  echo "❌ Update command failed"
+  exit 1
+fi
+
+# 3) Смотрим, что версия изменилась (или create-repo перезаписан)
+NEW_VERSION_OUTPUT=$("$BIN" --version || true)
+echo "ℹ️ New version output: $NEW_VERSION_OUTPUT"
+
+# Допустим, в свежем варианте версия = vX.Y.Z
+# Можно grep "version:" + убеждаться, что != $OLD_VERSION
+if echo "$NEW_VERSION_OUTPUT" | grep -q "version:"; then
+  # Вытянем саму версию
+  CURRENT_VER=$(echo "$NEW_VERSION_OUTPUT" | sed -n 's|.*version: *||p' | tr -d '[:space:]')
+  echo "ℹ️ Detected version after update: $CURRENT_VER"
+
+  if [ "$CURRENT_VER" == "$OLD_VERSION" ]; then
+    echo "❌ Version not updated (still $OLD_VERSION)"
+    exit 1
+  fi
+else
+  echo "❌ No 'version:' in output — maybe update didn't happen?"
+  exit 1
+fi
+
+echo "✅ Update test passed"
