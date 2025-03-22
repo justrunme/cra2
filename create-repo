@@ -3,15 +3,21 @@ set -e
 set -x
 trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 
+echo "✅ create-repo started"
+echo "📂 PWD: $PWD"
+echo "📄 FILE: $0"
+echo "👤 User: $(whoami)"
+
 SCRIPT_VERSION="{{VERSION}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "ℹ️ SCRIPT_DIR: $SCRIPT_DIR"
 
-# Экспорт переменных
+# === Export shared vars ===
 export PLATFORM_MAP="${PLATFORM_MAP:-$HOME/.create-repo.platforms}"
 export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
 export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 
-# Подключение модулей
+# === Load modules ===
 for file in colors flags version update help config platform repo logger doctor; do
   full="$SCRIPT_DIR/modules/$file.sh"
   if [[ ! -f "$full" ]]; then
@@ -23,7 +29,8 @@ for file in colors flags version update help config platform repo logger doctor;
 done
 
 main() {
-  echo "🚀 Starting create-repo"
+  echo "🚀 Entered main()"
+
   validate_flags "$@"
 
   repo=""
@@ -32,7 +39,7 @@ main() {
   dry_run=false
 
   while [[ $# -gt 0 ]]; do
-    case $1 in
+    case "$1" in
       --help|-h) show_help; exit 0 ;;
       --version) show_version; exit 0 ;;
       --update) check_for_update; exit 0 ;;
@@ -47,7 +54,9 @@ main() {
       --remove)
         [[ "$2" == "--force" ]] && remove_repo_force "$(pwd)" && exit 0 ;;
       --pull-only) perform_pull_only; exit 0 ;;
-      --dry-run) export NO_PUSH=true; dry_run=true ;;
+      --dry-run)
+        export NO_PUSH=true
+        dry_run=true ;;
       --sync-now) sync_now; exit 0 ;;
       --doctor) doctor_check; exit 0 ;;
       *) [[ -z "$repo" ]] && repo=$1 ;;
@@ -57,13 +66,16 @@ main() {
 
   export dry_run=${dry_run:-false}
   CURRENT_FOLDER=$(realpath "$PWD")
+  echo "🧭 Current folder: $CURRENT_FOLDER"
+
   load_config
 
-  echo "🧪 dry_run=$dry_run | platform_flag=$platform_flag"
-  echo "🧭 current folder: $CURRENT_FOLDER"
+  echo "🧪 dry_run=$dry_run"
+  echo "🧪 platform_flag=$platform_flag"
 
   platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")
   [[ -z "$platform" ]] && platform="unknown"
+  echo "📦 Platform: $platform"
 
   if [[ "$platform" == "unknown" && "$dry_run" != "true" ]]; then
     echo -e "${RED}❌ No Git platform detected.${RESET}"
@@ -73,16 +85,16 @@ main() {
   repo=${repo:-$(basename "$PWD")}
   branch=${default_branch:-main}
   visibility=${default_visibility:-public}
-
   echo "📌 Repo: $repo"
   echo "📌 Branch: $branch"
-  echo "📌 Platform: $platform"
   echo "📌 Visibility: $visibility"
   echo "📦 dry_run=$dry_run | NO_PUSH=$NO_PUSH"
 
-  generate_readme
-  generate_gitignore
+  # === Safe README and .gitignore generation ===
+  generate_readme || echo "⚠️ Failed to generate README"
+  generate_gitignore || echo "⚠️ Failed to generate .gitignore"
 
+  # === Initialize repo
   git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
 
   show_final_message "$repo" "$branch" "$PWD" "$REPO_LIST" "$platform"
