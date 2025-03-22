@@ -29,7 +29,8 @@ export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 for file in colors flags version update help config platform repo logger doctor utils; do
   full="$SCRIPT_DIR/modules/$file.sh"
   if [[ ! -f "$full" ]]; then
-    echo "❌ Module not found: $full"
+    echo -e "${RED}❌ Module not found: $full${RESET}"
+    echo -e "${YELLOW}➡️ Please verify that the installation is complete and refer to the README for troubleshooting.${RESET}"
     exit 1
   fi
   echo "🔍 Loading module: $file.sh → $full"
@@ -47,7 +48,7 @@ main() {
   interactive=false
   dry_run=false
 
-  # === Parse CLI arguments
+  # Parse CLI arguments
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --help|-h)
@@ -69,7 +70,6 @@ main() {
         platform_flag="${1#*=}"
         ;;
       --platform-status)
-        # NOW show_platform_bindings is loaded from platform.sh
         show_platform_bindings
         exit 0
         ;;
@@ -133,6 +133,7 @@ main() {
 
   if [[ "$platform" == "unknown" && "$dry_run" != "true" ]]; then
     echo -e "${RED}❌ No Git platform detected.${RESET}"
+    echo -e "${YELLOW}➡️ Please check that your remote URL is correct and that required tokens or CLI tools are installed. Refer to the README for troubleshooting.${RESET}"
     exit 1
   fi
 
@@ -155,8 +156,13 @@ main() {
     echo -e "${YELLOW}This was a dry-run. No git push was executed.${RESET}"
   fi
 
+  # === Финальное сообщение
+  echo "✅ Repository '$repo' successfully initialized on branch '$branch' with visibility '$visibility'."
+  echo "   Auto-sync is enabled and your repository is now tracked in '$REPO_LIST'."
+  echo "   For further information, check the log at '$LOG_FILE' or run 'create-repo --help'."
+
   exit 0
 }
 
-# === 5) Call main
+# === 5) Call main()
 main "$@"
