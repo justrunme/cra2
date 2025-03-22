@@ -80,3 +80,23 @@ min() {
   done
   echo $m
 }
+# Получить URL для удаленного репозитория на основе платформы
+get_remote_url() {
+  local repo_name="$1"
+  local platform="$2"
+
+  case "$platform" in
+    github)
+      echo "https://github.com/your-username/$repo_name.git"
+      ;;
+    gitlab)
+      echo "https://gitlab.com/your-username/$repo_name.git"
+      ;;
+    bitbucket)
+      echo "https://bitbucket.org/your-username/$repo_name.git"
+      ;;
+    *)
+      echo "https://example.com/$repo_name.git"
+      ;;
+  esac
+}
