@@ -114,7 +114,12 @@ git_init_repo() {
 
   # Добавляем origin, если не существует
   if ! git remote | grep -q origin; then
-    remote_url=$(get_remote_url "$repo_name" "$platform")
+    if command -v get_remote_url >/dev/null 2>&1; then
+      remote_url=$(get_remote_url "$repo_name" "$platform")
+    else
+      echo "⚠️ Function get_remote_url not found. Using fallback URL."
+      remote_url="https://example.com/$repo_name.git"
+    fi
     echo "🔗 Adding remote origin: $remote_url"
     git remote add origin "$remote_url"
   fi
