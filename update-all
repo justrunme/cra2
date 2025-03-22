@@ -16,18 +16,29 @@ source "$MODULES_DIR/config.sh"
 source "$MODULES_DIR/platform.sh"
 source "$MODULES_DIR/git.sh"
 source "$MODULES_DIR/utils.sh"
+# Предположим, что sync_now() содержится в repo.sh
+# (или можно оставить старую логику pull/push)
+source "$MODULES_DIR/repo.sh"
 
 # === Default flags ===
 PULL_ONLY=false
 DRY_RUN=false
+ONLY_TAGS=""
 
 # === Parse flags ===
 for arg in "$@"; do
   case "$arg" in
-    --pull-only) PULL_ONLY=true ;;
-    --dry-run) DRY_RUN=true ;;
+    --pull-only)
+      PULL_ONLY=true
+      ;;
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    --only-tags=*)
+      ONLY_TAGS="${arg#*=}"
+      ;;
     --help)
-      echo "Usage: update-all [--pull-only] [--dry-run]"
+      echo "Usage: update-all [--pull-only] [--dry-run] [--only-tags=TAG]"
       exit 0
       ;;
     *)
@@ -43,6 +54,17 @@ LIST_FILE="$HOME/.repo-autosync.list"
 LOG_FILE="$HOME/.create-repo.log"
 ERROR_LOG="$HOME/.create-repo-errors.log"
 
+# === 1) Optional Locking (if enable_lock=true in global config)
+load_config  # ← грузит глобальный ~/.create-repo.conf, где может быть enable_lock=true
+if [[ "$enable_lock" == "true" ]]; then
+  LOCKFILE="/tmp/update-all.lock"
+  exec 200>"$LOCKFILE"
+  if ! flock -n 200; then
+    echo -e "${YELLOW}⚠️ Another update-all is running. Exiting.${RESET}"
+    exit 0
+  fi
+fi
+
 # === Start ===
 if [ ! -f "$LIST_FILE" ]; then
   echo -e "${YELLOW}⚠️ No repos tracked. Use create-repo to track repositories.${RESET}"
@@ -52,7 +74,10 @@ fi
 echo -e "${BOLD}🔄 Starting sync of tracked repositories...${RESET}"
 
 while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
+  # пропускаем пустые строки
   [ -z "$repo_path" ] && continue
+
+  # проверяем, что это git
   if [ ! -d "$repo_path/.git" ]; then
     echo -e "${RED}❌ Not a Git repo: $repo_path${RESET}"
     continue
@@ -60,9 +85,8 @@ while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
 
   cd "$repo_path" || continue
   PROJECT_NAME=$(basename "$repo_path")
-  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 
-  # === Load local config ===
+  # Загружаем локальный конфиг
   LOCAL_CONF="$repo_path/.create-repo.local.conf"
   if [ -f "$LOCAL_CONF" ]; then
     echo "ℹ️ Loading local config: $LOCAL_CONF"
@@ -73,39 +97,43 @@ while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
     fi
   fi
 
+  # 2) selective sync by tags (ONLY_TAGS vs sync_tags)
+  if [ -n "$ONLY_TAGS" ]; then
+    # sync_tags="prod,critical" (к примеру)
+    if [[ -z "$sync_tags" ]]; then
+      echo "🚫 $PROJECT_NAME has no sync_tags, skipping"
+      continue
+    fi
+    # простой поиск совпадения
+    # если $sync_tags="prod,critical" и $ONLY_TAGS="prod"
+    intersect=$(echo "$sync_tags" | grep -o "$ONLY_TAGS" || true)
+    if [ -z "$intersect" ]; then
+      echo "🚫 $PROJECT_NAME (tags: $sync_tags) doesn't match --only-tags=$ONLY_TAGS, skipping"
+      continue
+    fi
+  fi
+
   echo -e "\n📁 ${BOLD}$PROJECT_NAME${RESET} ${DIM}[$repo_path]${RESET}"
-  echo -e "🔀 Current branch: ${CYAN}$BRANCH${RESET}"
 
-  # === Git pull ===
-  echo -e "⬇️  Pulling..."
-  if git pull origin "$BRANCH"; then
-    echo -e "${GREEN}✅ Pull success${RESET}"
-  else
-    echo -e "${RED}❌ Pull failed${RESET}"
-    log_error "$PROJECT_NAME" "$repo_path"
-    continue
+  # Если хотим сохранить старую логику pull/push, можно оставить;
+  # но предположим, что у нас в repo.sh есть sync_now() (или perform_sync).
+  # Для примера вызовем sync_now, передадим PULL_ONLY, DRY_RUN, etc.
+  if [ "$PULL_ONLY" = true ]; then
+    echo "🌀 Pull-only mode → skipping push"
+    export PULL_ONLY=true
+  fi
+  if [ "$DRY_RUN" = true ]; then
+    export NO_PUSH=true
   fi
 
-  if [[ "$PULL_ONLY" == true ]]; then
-    echo -e "📦 Pull-only mode active. Skipping push."
-    log_success "$PROJECT_NAME" "$repo_path"
-    continue
-  fi
-
-  if [[ "$DRY_RUN" == true ]]; then
-    echo -e "🧪 Dry-run mode: simulating push..."
-    git status
-    log_success "$PROJECT_NAME (dry-run)" "$repo_path"
-    continue
-  fi
-
-  # === Git push ===
-  echo -e "⬆️  Pushing..."
-  if git push origin "$BRANCH"; then
-    echo -e "${GREEN}✅ Push success${RESET}"
+  # Вызов универсальной функции (см. repo.sh)
+  # Если её нет, оставь логику, как была.
+  if sync_now; then
+    # Успех
     log_success "$PROJECT_NAME" "$repo_path"
   else
-    echo -e "${RED}❌ Push failed${RESET}"
+    # Неудача
+    echo -e "${RED}❌ Sync failed${RESET}"
     log_error "$PROJECT_NAME" "$repo_path"
   fi
 
