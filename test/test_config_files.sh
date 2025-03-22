@@ -11,11 +11,12 @@ REPO_LIST="$HOME/.repo-autosync.list"
 # Удалим старые файлы, если были
 rm -f "$CONFIG" "$REPO_LIST"
 
-# Запускаем интерактив с автопотоком ввода
-"$BIN" --interactive <<EOF
-test-repo
-n
-EOF
+# Явный вызов без интерактива
+"$BIN" my-test-repo \
+  --platform=GitHub \
+  --disable-sync \
+  --no-push \
+  --dry-run
 
 # Проверяем, созданы ли файлы
 if [ ! -f "$CONFIG" ]; then
