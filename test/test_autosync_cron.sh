@@ -21,35 +21,11 @@ git config user.email "test@example.com"
 git config user.name "Test User"
 git commit -m "init" &>/dev/null
 
-# Проверим, что файл create-repo существует и исполним
-echo "📂 Checking if create-repo is executable..."
-
-if [ ! -x "$BIN" ]; then
-  echo "❌ File $BIN is not executable or not found"
-  exit 1
-else
-  echo "✅ File $BIN is executable"
-fi
-
-# Проверим, что бинарник доступен
-echo "📂 Verifying file path:"
-ls -la "$BIN"
-
-# Логируем вывод команды для диагностики
+# Запускаем create-repo без --disable-sync
 echo "▶️ Running create-repo to enable auto-sync..."
-output=$("$BIN" --platform=github 2>&1)
-exit_code=$?
-
-# Проверка на ошибки
-if [ $exit_code -ne 0 ]; then
-  echo "❌ Failed to run create-repo. Here's the output of the failed command:"
-  echo "$output"
-  echo "$output" > /tmp/create-repo_error.log  # Сохраняем ошибку в файл для дальнейшего анализа
-  exit 1
-fi
+"$BIN" --platform=github || { echo "❌ Failed to run create-repo"; exit 1; }
 
 # Проверяем .repo-autosync.list
-echo "📂 Checking if repo was added to .repo-autosync.list..."
 if ! grep -q "$TMP_DIR" ~/.repo-autosync.list; then
   echo "❌ Repo not added to ~/.repo-autosync.list"
   exit 1
@@ -59,7 +35,6 @@ echo "✅ Repo added to autosync list"
 # Проверяем запись в cron/launchctl
 OS=$(uname)
 if [[ "$OS" == "Darwin" ]]; then
-  echo "📂 Checking for launchctl job..."
   JOBS=$(launchctl list | grep create-repo || true)
   if [[ -z "$JOBS" ]]; then
     echo "❌ No launchctl job found for create-repo"
@@ -67,7 +42,6 @@ if [[ "$OS" == "Darwin" ]]; then
   fi
   echo "✅ launchctl job found"
 else
-  echo "📂 Checking for cron job..."
   CRON=$(crontab -l 2>/dev/null | grep create-repo || true)
   if [[ -z "$CRON" ]]; then
     echo "❌ No crontab entry found for create-repo"
