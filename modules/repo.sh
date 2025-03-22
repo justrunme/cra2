@@ -62,7 +62,7 @@ sync_now() {
   fi
 
   git -C "$repo_path" pull --rebase || echo "⚠️ Pull failed."
-  git -C "$repo_path" add . 
+  git -C "$repo_path" add .
   git -C "$repo_path" commit -m "Auto-sync $(date '+%F %T')" 2>/dev/null
 
   if [[ "$NO_PUSH" == "true" ]]; then
@@ -87,3 +87,6 @@ perform_dry_run() {
     git -C "$(pwd)" push --dry-run origin "$branch"
   fi
 }
+
+# Создание списка, если отсутствует (используется в git_init_repo)
+[[ ! -f "$HOME/.repo-autosync.list" ]] && touch "$HOME/.repo-autosync.list"
