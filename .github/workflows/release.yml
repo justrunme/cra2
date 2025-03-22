@@ -71,12 +71,9 @@ jobs:
           cp create-repo update-all install-create-repo.sh pkg/usr/local/bin/
           cp modules/*.sh pkg/usr/local/bin/modules/
           chmod +x pkg/usr/local/bin/*
-
-          # 🔁 Подстановка версии
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/modules/version.sh
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
 
-          # Создание control-файла
           echo "Package: create-repo" > pkg/DEBIAN/control
           echo "Version: ${VERSION#v}" >> pkg/DEBIAN/control
           echo "Section: utils" >> pkg/DEBIAN/control
@@ -85,7 +82,6 @@ jobs:
           echo "Maintainer: you@example.com" >> pkg/DEBIAN/control
           echo "Description: Git auto-sync CLI with modular structure" >> pkg/DEBIAN/control
 
-          # Создание postinst
           echo '#!/bin/bash' > pkg/DEBIAN/postinst
           echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
           chmod +x pkg/DEBIAN/postinst
@@ -93,6 +89,14 @@ jobs:
           dpkg-deb --build pkg
           mv pkg.deb create-repo_${VERSION#v}.deb
           sha256sum create-repo_*.deb > checksums.txt
+
+      - name: 📤 Upload DEB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-artifacts
+          path: |
+            create-repo_*.deb
+            checksums.txt
 
   build-mac:
     runs-on: macos-latest
@@ -117,7 +121,6 @@ jobs:
           cp create-repo update-all install-create-repo.sh pkg-root/usr/local/bin/
           cp modules/*.sh pkg-root/usr/local/bin/modules/
           chmod +x pkg-root/usr/local/bin/*
-
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/modules/version.sh
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
 
@@ -130,11 +133,29 @@ jobs:
 
           shasum -a 256 create-repo_*.pkg >> checksums.txt
 
+      - name: 📤 Upload PKG Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-artifacts
+          path: |
+            create-repo_*.pkg
+            checksums.txt
+
   release:
     runs-on: ubuntu-latest
     needs: [build-deb, build-mac, autotag]
     steps:
       - uses: actions/checkout@v4
+
+      - name: 📥 Download DEB Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-artifacts
+
+      - name: 📥 Download PKG Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-artifacts
 
       - name: 🚀 Publish GitHub Release
         uses: softprops/action-gh-release@v2
