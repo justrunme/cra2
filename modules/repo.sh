@@ -121,7 +121,11 @@ git_init_repo() {
 
   # Пушим, если не отключено переменной
   if [[ "$NO_PUSH" == "true" ]]; then
-    echo "⚠️ Skipping git push due to NO_PUSH=true"
+    if [[ "$dry_run" == "true" ]]; then
+      echo "🚫 Dry-run mode: git push skipped"
+    else
+      echo "⚠️ Skipping git push due to NO_PUSH=true"
+    fi
   else
     git push --set-upstream origin "$branch"
   fi
