@@ -22,9 +22,11 @@ git config user.name "Test User"
 git commit -m "init" &>/dev/null
 
 # Запускаем create-repo без --disable-sync
+echo "▶️ Running create-repo to enable auto-sync..."
 "$BIN" --platform=github
 
 # Проверяем .repo-autosync.list
+echo "📂 Checking if repo was added to .repo-autosync.list..."
 if ! grep -q "$TMP_DIR" ~/.repo-autosync.list; then
   echo "❌ Repo not added to ~/.repo-autosync.list"
   exit 1
@@ -34,6 +36,7 @@ echo "✅ Repo added to autosync list"
 # Проверяем запись в cron/launchctl
 OS=$(uname)
 if [[ "$OS" == "Darwin" ]]; then
+  echo "📂 Checking for launchctl job..."
   JOBS=$(launchctl list | grep create-repo || true)
   if [[ -z "$JOBS" ]]; then
     echo "❌ No launchctl job found for create-repo"
@@ -41,6 +44,7 @@ if [[ "$OS" == "Darwin" ]]; then
   fi
   echo "✅ launchctl job found"
 else
+  echo "📂 Checking for cron job..."
   CRON=$(crontab -l 2>/dev/null | grep create-repo || true)
   if [[ -z "$CRON" ]]; then
     echo "❌ No crontab entry found for create-repo"
