@@ -43,15 +43,21 @@ remove_repo_force() {
 
 generate_readme() {
   if [[ ! -f README.md ]]; then
-    echo -e "ℹ️  Generating README.md..."
+    echo "ℹ️ Generating README.md..."
     echo "# $(basename "$PWD")" > README.md
   fi
 }
 
 generate_gitignore() {
   if [[ ! -f .gitignore ]]; then
-    echo -e "ℹ️  Generating .gitignore..."
-    echo -e "*.log\nnode_modules/\n.env\ndist/\n__pycache__/" > .gitignore
+    echo "ℹ️ Generating .gitignore..."
+    cat <<EOF > .gitignore
+*.log
+node_modules/
+.env
+dist/
+__pycache__/
+EOF
   fi
 }
 
@@ -86,24 +92,7 @@ perform_pull_only() {
 perform_dry_run() {
   local branch=$(git -C "$(pwd)" symbolic-ref --short HEAD 2>/dev/null || echo "main")
   echo -e "🚀 Dry-run: git push origin $branch"
-  if [[ "$NO_PUSH" == "true" ]]; then
-    echo "⚠️ Skipping git push (dry-run) due to NO_PUSH=true"
-  else
-    git -C "$(pwd)" push --dry-run origin "$branch"
-  fi
-}
-
-# Helper in case it's not loaded from another module
-get_remote_url() {
-  local repo_name="$1"
-  local platform="$2"
-
-  case "$platform" in
-    github) echo "https://example.com/${repo_name}.git" ;;
-    gitlab) echo "https://gitlab.example.com/${repo_name}.git" ;;
-    bitbucket) echo "https://bitbucket.org/${repo_name}.git" ;;
-    *) echo "https://example.com/${repo_name}.git" ;;
-  esac
+  echo "⚠️ Skipping git push (dry-run)"
 }
 
 git_init_repo() {
@@ -126,6 +115,7 @@ git_init_repo() {
   # Добавляем origin, если не существует
   if ! git remote | grep -q origin; then
     remote_url=$(get_remote_url "$repo_name" "$platform")
+    echo "🔗 Adding remote origin: $remote_url"
     git remote add origin "$remote_url"
   fi
 
@@ -139,13 +129,10 @@ git_init_repo() {
 
   # Пушим, если не отключено переменной
   if [[ "$NO_PUSH" == "true" ]]; then
-    if [[ "$dry_run" == "true" ]]; then
-      echo "🚫 Dry-run mode: git push skipped"
-    else
-      echo "⚠️ Skipping git push due to NO_PUSH=true"
-    fi
+    echo "🚫 NO_PUSH=true → git push skipped"
   else
-    git push --set-upstream origin "$branch"
+    echo "⬆️ Pushing to remote..."
+    git push --set-upstream origin "$branch" || echo "⚠️ Push failed"
   fi
 
   log_info "Repo '$repo_name' initialized on '$platform' at $PWD" "$log_file"
