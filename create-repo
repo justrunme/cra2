@@ -62,14 +62,19 @@ main() {
   done
 
   export dry_run=${dry_run:-false}
-
   CURRENT_FOLDER=$(realpath "$PWD")
   load_config
 
-  # Определение платформы (с поддержкой dry-run)
-  platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")
+  # Отладка
+  echo "DEBUG: dry_run=$dry_run"
+  echo "DEBUG: platform_flag=$platform_flag"
 
-  if [[ -z "$platform" || "$platform" == "unknown" ]]; then
+  platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")
+  platform=${platform:-unknown}  # fallback
+
+  echo "DEBUG: detected platform=$platform"
+
+  if [[ "$platform" == "unknown" ]]; then
     if [[ "$dry_run" == "true" ]]; then
       echo -e "${YELLOW}⚠️ Platform is unknown, continuing due to dry-run.${RESET}"
     else
@@ -78,19 +83,14 @@ main() {
     fi
   fi
 
-  # Значения по умолчанию
   repo=${repo:-$(basename "$PWD")}
   branch=${default_branch:-main}
   visibility=${default_visibility:-public}
 
-  # README и .gitignore
   generate_readme
   generate_gitignore
 
-  # Инициализация репозитория
   git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
-
-  # Финальное сообщение
   show_final_message "$repo" "$branch" "$PWD" "$REPO_LIST" "$platform"
 
   if [[ "$dry_run" == "true" ]]; then
