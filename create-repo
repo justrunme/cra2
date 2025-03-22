@@ -25,7 +25,7 @@ export PLATFORM_MAP="${PLATFORM_MAP:-$HOME/.create-repo.platforms}"
 export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
 export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 
-# === 3) Load modules
+# === 3) Load modules BEFORE any argument parsing
 for file in colors flags version update help config platform repo logger doctor utils; do
   full="$SCRIPT_DIR/modules/$file.sh"
   if [[ ! -f "$full" ]]; then
@@ -36,7 +36,7 @@ for file in colors flags version update help config platform repo logger doctor 
   source "$full"
 done
 
-# === 4) Main function
+# === 4) Define main()
 main() {
   echo "🚀 Entered main()"
 
@@ -47,33 +47,71 @@ main() {
   interactive=false
   dry_run=false
 
-  # === Parse CLI args
+  # === Parse CLI arguments
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --help|-h)      show_help; exit 0 ;;
-      --version)      show_version; exit 0 ;;
-      --update)       check_for_update; exit 0 ;;
-      --interactive)  interactive=true ;;
-      --platform=*)   platform_flag="${1#*=}" ;;
-      --platform-status) show_platform_bindings; exit 0 ;;
-      --status)       print_status_all; exit 0 ;;
+      --help|-h)
+        show_help
+        exit 0
+        ;;
+      --version)
+        show_version
+        exit 0
+        ;;
+      --update)
+        check_for_update
+        exit 0
+        ;;
+      --interactive)
+        interactive=true
+        ;;
+      --platform=*)
+        platform_flag="${1#*=}"
+        ;;
+      --platform-status)
+        # NOW show_platform_bindings is loaded from platform.sh
+        show_platform_bindings
+        exit 0
+        ;;
+      --status)
+        print_status_all
+        exit 0
+        ;;
       --log)
-        [[ "$2" == "--errors" ]] && tail -n 10 "$HOME/.create-repo-errors.log" && exit 0
+        if [[ "$2" == "--errors" ]]; then
+          tail -n 10 "$HOME/.create-repo-errors.log"
+          exit 0
+        fi
         tail -n 10 "$LOG_FILE"
         exit 0
         ;;
-      --list)         print_repo_list; exit 0 ;;
-      --remove)
-        [[ "$2" == "--force" ]] && remove_repo_force "$(pwd)" && exit 0
+      --list)
+        print_repo_list
+        exit 0
         ;;
-      --pull-only)    perform_pull_only; exit 0 ;;
+      --remove)
+        if [[ "$2" == "--force" ]]; then
+          remove_repo_force "$(pwd)"
+          exit 0
+        fi
+        ;;
+      --pull-only)
+        perform_pull_only
+        exit 0
+        ;;
       --dry-run)
         export NO_PUSH=true
         dry_run=true
         ;;
-      --sync-now)     sync_now; exit 0 ;;
-      --doctor)       doctor_check; exit 0 ;;
-      *) 
+      --sync-now)
+        sync_now
+        exit 0
+        ;;
+      --doctor)
+        doctor_check
+        exit 0
+        ;;
+      *)
         [[ -z "$repo" ]] && repo=$1
         ;;
     esac
