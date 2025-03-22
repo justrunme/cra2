@@ -7,8 +7,7 @@ detect_platform() {
 
   if [[ -n "$override" ]]; then
     echo "$folder=$override" >> "$PLATFORM_MAP"
-    echo "$override"
-    return
+    echo "$override"; return
   fi
 
   if [[ -f "$PLATFORM_MAP" ]]; then
