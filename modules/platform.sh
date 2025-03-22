@@ -3,6 +3,7 @@
 detect_platform() {
   local folder="$1"
   local override="$2"
+  local is_dry_run="$3"
 
   if [[ -n "$override" ]]; then
     echo "$folder=$override" >> "$PLATFORM_MAP"
@@ -28,8 +29,7 @@ detect_platform() {
     echo "$folder=$chosen" >> "$PLATFORM_MAP"
     echo "$chosen"
   else
-    # Нет платформ — но в режиме dry-run можно вернуть "unknown"
-    if [[ "$dry_run" == "true" ]]; then
+    if [[ "$is_dry_run" == "true" ]]; then
       echo "unknown"
     else
       echo ""
