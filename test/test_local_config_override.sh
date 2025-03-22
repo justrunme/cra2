@@ -12,6 +12,7 @@ TMP_DIR=$(mktemp -d)
 cd "$TMP_DIR"
 echo "📁 TMP_DIR: $TMP_DIR"
 
+# Инициализация git-репозитория
 git init -b main &>/dev/null
 echo "# Test override" > README.md
 git add README.md
@@ -23,20 +24,20 @@ git remote add origin https://example.com/fake.git
 # Создаём local override
 echo "disable_sync=true" > .create-repo.local.conf
 
-# Запускаем create-repo
+# Запускаем create-repo в dry-run режиме
 "$BIN" --dry-run --platform=github
 
-# Проверка: в .repo-autosync.list должен быть наш путь
+# Проверяем, что путь записался в список
 if ! grep -q "$TMP_DIR" ~/.repo-autosync.list; then
-  echo "❌ Repo not tracked"
+  echo "❌ Repo not tracked in ~/.repo-autosync.list"
   exit 1
 fi
 
-# Запускаем update-all
+# Запускаем update-all и логируем вывод
 UPDATE_LOG=$(mktemp)
 NO_PUSH=true "$SCRIPT_DIR/update-all" > "$UPDATE_LOG" 2>&1
 
-# Проверка, что репозиторий был пропущен
+# Проверяем, что репозиторий был пропущен
 if ! grep -q "skipped" "$UPDATE_LOG"; then
   echo "❌ Local config override not respected"
   cat "$UPDATE_LOG"
