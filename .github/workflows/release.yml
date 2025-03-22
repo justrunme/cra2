@@ -37,14 +37,13 @@ jobs:
       - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
+      - name: ✅ Make scripts executable
+        run: |
+          chmod +x create-repo update-all install-create-repo.sh
+          chmod +x test/*.sh test/run-all-tests.sh
+
       - name: 🧪 Run all tests from test/
         run: |
-          set -x
-          chmod +x create-repo || echo "⚠️ Cannot chmod create-repo"
-          chmod +x test/*.sh test/run-all-tests.sh || echo "⚠️ Cannot chmod test files"
-          echo "🐚 create-repo file:"
-          file create-repo || echo "⚠️ file command failed"
-          echo "🌐 Current dir: $(pwd)"
           export CREATE_REPO_BIN="$PWD/create-repo"
           bash test/run-all-tests.sh
 
@@ -53,6 +52,10 @@ jobs:
     needs: [autotag, test]
     steps:
       - uses: actions/checkout@v4
+
+      - name: ✅ Make scripts executable
+        run: |
+          chmod +x create-repo update-all install-create-repo.sh
 
       - name: ✅ Verify required modules (Linux)
         run: |
@@ -103,6 +106,10 @@ jobs:
     needs: [autotag, test]
     steps:
       - uses: actions/checkout@v4
+
+      - name: ✅ Make scripts executable
+        run: |
+          chmod +x create-repo update-all install-create-repo.sh
 
       - name: ✅ Verify required modules (macOS)
         run: |
