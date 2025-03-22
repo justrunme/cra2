@@ -3,18 +3,23 @@ set -e
 set -x
 trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 
+# ✅ Мини-диагностика запуска
+echo "✅ create-repo started"
+echo "📂 PWD: $PWD"
+echo "📄 BASENAME: $(basename "$0")"
+echo "📎 FILE: $0"
+echo "🔧 Running as user: $(whoami)"
+
 SCRIPT_VERSION="{{VERSION}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "ℹ️ SCRIPT_DIR resolved as: $SCRIPT_DIR"
 
-echo "✅ create-repo started"
-echo "ℹ️ SCRIPT_DIR: $SCRIPT_DIR"
-
-# ✅ Экспорт переменных
+# ✅ Экспорт переменных (если unset)
 export PLATFORM_MAP="${PLATFORM_MAP:-$HOME/.create-repo.platforms}"
 export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
 export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 
-# ✅ Подключение модулей с проверкой
+# ✅ Проверка и подключение модулей
 for file in colors flags version update help config platform repo logger doctor; do
   full="$SCRIPT_DIR/modules/$file.sh"
   if [[ ! -f "$full" ]]; then
@@ -68,16 +73,19 @@ main() {
   done
 
   export dry_run=${dry_run:-false}
+  echo "🧪 dry_run flag: $dry_run"
+  echo "🧪 platform_flag: $platform_flag"
+
   CURRENT_FOLDER=$(realpath "$PWD")
+  echo "🧭 current folder: $CURRENT_FOLDER"
+
   load_config
 
-  echo "DEBUG: dry_run=$dry_run"
-  echo "DEBUG: platform_flag=$platform_flag"
-
+  # 🧠 Определение платформы
   platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")
-  [[ -z "$platform" ]] && platform="unknown"
+  echo "📦 Detected platform: $platform"
 
-  echo "DEBUG: detected platform=$platform"
+  [[ -z "$platform" ]] && platform="unknown"
 
   if [[ "$platform" == "unknown" ]]; then
     if [[ "$dry_run" == "true" ]]; then
@@ -87,10 +95,15 @@ main() {
     fi
   fi
 
+  # 🧱 Значения по умолчанию
   repo=${repo:-$(basename "$PWD")}
   branch=${default_branch:-main}
   visibility=${default_visibility:-public}
+  echo "📌 Repo: $repo"
+  echo "📌 Branch: $branch"
+  echo "📌 Visibility: $visibility"
 
+  # 📁 Инициализация структуры
   generate_readme
   generate_gitignore
   git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
