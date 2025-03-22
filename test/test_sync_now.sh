@@ -12,23 +12,29 @@ cd "$TMP_DIR"
 git init
 git config user.name "CI Bot"
 git config user.email "ci@example.com"
-touch README.md
+echo "# Test repo" > README.md
 git add README.md
 git commit -m "Initial commit"
 
-# Добавляем фиктивный origin и устанавливаем tracking ветки
+# Добавим фиктивный origin
 git remote add origin https://example.com/fake.git
+git branch -M master
 git branch --set-upstream-to=origin/master master || echo "⚠️ Upstream set skipped"
 
-# Создаём базовые конфиги, чтобы избежать ошибок
+# Запишем путь в список трекаемых
 echo "$TMP_DIR" >> ~/.repo-autosync.list
+
+# Базовый конфиг
 cat <<EOF > ~/.create-repo.conf
 default_branch=master
 default_visibility=public
 EOF
 
-# Запуск теста — симулируем push
-echo "🚀 Running create-repo --sync-now"
-$BIN --sync-now || echo "⚠️ sync-now exited with non-zero code (expected for fake remote)"
+# Привязка платформы
+echo "$TMP_DIR=github" >> ~/.create-repo.platforms
 
-echo "✅ --sync-now test completed (fake remote)"
+# Запуск
+echo "🚀 Running create-repo --sync-now"
+NO_PUSH=true "$BIN" --sync-now
+
+echo "✅ --sync-now test passed (NO_PUSH=true, no real push attempted)"
