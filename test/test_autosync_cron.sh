@@ -44,6 +44,7 @@ exit_code=$?
 if [ $exit_code -ne 0 ]; then
   echo "❌ Failed to run create-repo. Here's the output of the failed command:"
   echo "$output"
+  echo "$output" > /tmp/create-repo_error.log  # Сохраняем ошибку в файл для дальнейшего анализа
   exit 1
 fi
 
