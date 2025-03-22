@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Проверка зависимостей
+# === Check required dependencies ===
 check_dependencies() {
   for cmd in git curl jq; do
     if ! command -v "$cmd" &>/dev/null; then
@@ -10,7 +10,7 @@ check_dependencies() {
   done
 }
 
-# Подсказка похожего флага при опечатке
+# === Suggest closest matching flag on typo ===
 suggest_flag() {
   local input="$1"
   local -a known_flags=(
@@ -35,8 +35,8 @@ suggest_flag() {
   local min_distance=999
 
   for flag in "${known_flags[@]}"; do
-    local distance
     if [[ -n "$input" && -n "$flag" ]]; then
+      local distance
       distance=$(levenshtein "$input" "$flag")
       if (( distance < min_distance )); then
         min_distance=$distance
@@ -50,38 +50,42 @@ suggest_flag() {
   fi
 }
 
-# Расчёт расстояния Левенштейна между двумя строками
+# === Levenshtein distance between two strings ===
 levenshtein() {
-  if [ "$1" = "$2" ]; then echo 0; return; fi
-  local str1len=${#1}
-  local str2len=${#2}
-  local i j
+  local s="$1"
+  local t="$2"
+
+  if [[ "$s" == "$t" ]]; then
+    echo 0
+    return
+  fi
+
+  local slen=${#s}
+  local tlen=${#t}
   declare -A d
+  local i j
 
-  for ((i=0; i<=str1len; i++)); do d[$i,0]=$i; done
-  for ((j=0; j<=str2len; j++)); do d[0,$j]=$j; done
+  for ((i = 0; i <= slen; i++)); do d[$i,0]=$i; done
+  for ((j = 0; j <= tlen; j++)); do d[0,$j]=$j; done
 
-  for ((i=1; i<=str1len; i++)); do
-    for ((j=1; j<=str2len; j++)); do
-      local char1="${1:i-1:1}"
-      local char2="${2:j-1:1}"
-      local cost=$(( char1 != char2 ? 1 : 0 ))
-
-      local del=$((d[i-1,j] + 1))
-      local ins=$((d[i,j-1] + 1))
-      local sub=$((d[i-1,j-1] + cost))
+  for ((i = 1; i <= slen; i++)); do
+    for ((j = 1; j <= tlen; j++)); do
+      local cost=$(( s[i-1] != t[j-1] ? 1 : 0 ))
+      local del=$(( d[i-1,j] + 1 ))
+      local ins=$(( d[i,j-1] + 1 ))
+      local sub=$(( d[i-1,j-1] + cost ))
       d[$i,$j]=$(min "$del" "$ins" "$sub")
     done
   done
 
-  echo "${d[$str1len,$str2len]}"
+  echo "${d[$slen,$tlen]}"
 }
 
-# Минимум из чисел
+# === Return min from list of numbers ===
 min() {
-  local m=$1
-  for n in "$@"; do
-    (( n < m )) && m=$n
+  local min_val=$1
+  for val in "$@"; do
+    (( val < min_val )) && min_val=$val
   done
-  echo $m
+  echo "$min_val"
 }
