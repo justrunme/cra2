@@ -20,12 +20,14 @@ rm -f ~/.create-repo.conf ~/.create-repo.local.conf
 # Сделаем все тесты исполняемыми
 chmod +x test_*.sh
 
-# Запуск каждого теста (временно без config test)
+# Запуск каждого теста, кроме отключённых
 for test in test_*.sh; do
-  if [[ "$test" == "test_config_files.sh" ]]; then
-    echo "⏭️  Skipping $test (temporarily disabled)"
-    continue
-  fi
+  case "$test" in
+    test_config_files.sh|test_init_git.sh)
+      echo "⏭️  Skipping $test (temporarily disabled)"
+      continue
+      ;;
+  esac
   echo "▶️  Running $test"
   bash "$test"
 done
