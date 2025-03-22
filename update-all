@@ -15,6 +15,7 @@ source "$MODULES_DIR/logger.sh"
 source "$MODULES_DIR/config.sh"
 source "$MODULES_DIR/platform.sh"
 source "$MODULES_DIR/git.sh"
+source "$MODULES_DIR/utils.sh"
 
 # === Default flags ===
 PULL_ONLY=false
@@ -31,7 +32,7 @@ for arg in "$@"; do
       ;;
     *)
       echo -e "${RED}❌ Unknown flag: $arg${RESET}"
-      echo "Use --help to see available options."
+      suggest_flag "$arg"
       exit 1
       ;;
   esac
@@ -66,7 +67,7 @@ while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
   if [ -f "$LOCAL_CONF" ]; then
     echo "ℹ️ Loading local config: $LOCAL_CONF"
     source "$LOCAL_CONF"
-    if [ "$disable_sync" = "true" ]; then
+    if [[ "$disable_sync" == "true" ]]; then
       echo -e "🚫 ${YELLOW}$PROJECT_NAME skipped (disabled via local config)${RESET}"
       continue
     fi
@@ -85,13 +86,13 @@ while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
     continue
   fi
 
-  if [ "$PULL_ONLY" = true ]; then
+  if [[ "$PULL_ONLY" == true ]]; then
     echo -e "📦 Pull-only mode active. Skipping push."
     log_success "$PROJECT_NAME" "$repo_path"
     continue
   fi
 
-  if [ "$DRY_RUN" = true ]; then
+  if [[ "$DRY_RUN" == true ]]; then
     echo -e "🧪 Dry-run mode: simulating push..."
     git status
     log_success "$PROJECT_NAME (dry-run)" "$repo_path"
