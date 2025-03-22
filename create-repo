@@ -90,11 +90,9 @@ main() {
   echo "📌 Visibility: $visibility"
   echo "📦 dry_run=$dry_run | NO_PUSH=$NO_PUSH"
 
-  # === Safe README and .gitignore generation ===
   generate_readme || echo "⚠️ Failed to generate README"
   generate_gitignore || echo "⚠️ Failed to generate .gitignore"
 
-  # === Initialize repo
   git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
 
   show_final_message "$repo" "$branch" "$PWD" "$REPO_LIST" "$platform"
