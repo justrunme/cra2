@@ -43,31 +43,22 @@ remove_repo_force() {
 
 generate_readme() {
   if [[ ! -f README.md ]]; then
-    echo "ℹ️ Generating README.md..."
-    echo "# $(basename "$PWD")" > README.md || {
-      echo "❌ Failed to create README.md"
-      return 1
-    }
-  else
-    echo "ℹ️ README.md already exists."
+    echo -e "ℹ️  Generating README.md..."
+    echo "# $(basename "$PWD")" > README.md
   fi
 }
 
 generate_gitignore() {
   if [[ ! -f .gitignore ]]; then
-    echo "ℹ️ Generating .gitignore..."
-    echo -e "*.log\nnode_modules/\n.env\ndist/\n__pycache__/" > .gitignore || {
-      echo "❌ Failed to create .gitignore"
-      return 1
-    }
-  else
-    echo "ℹ️ .gitignore already exists."
+    echo -e "ℹ️  Generating .gitignore..."
+    echo -e "*.log\nnode_modules/\n.env\ndist/\n__pycache__/" > .gitignore
   fi
 }
 
 sync_now() {
   local repo_path
   repo_path="$(pwd)"
+
   echo "🔄 Syncing $repo_path"
 
   if ! git -C "$repo_path" rev-parse --is-inside-work-tree &>/dev/null; then
@@ -100,6 +91,19 @@ perform_dry_run() {
   else
     git -C "$(pwd)" push --dry-run origin "$branch"
   fi
+}
+
+# Helper in case it's not loaded from another module
+get_remote_url() {
+  local repo_name="$1"
+  local platform="$2"
+
+  case "$platform" in
+    github) echo "https://example.com/${repo_name}.git" ;;
+    gitlab) echo "https://gitlab.example.com/${repo_name}.git" ;;
+    bitbucket) echo "https://bitbucket.org/${repo_name}.git" ;;
+    *) echo "https://example.com/${repo_name}.git" ;;
+  esac
 }
 
 git_init_repo() {
