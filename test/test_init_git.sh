@@ -9,13 +9,22 @@ TEST_DIR="$HOME/test-git-dir-$$"
 mkdir -p "$TEST_DIR"
 cd "$TEST_DIR"
 echo "📁 TEST_DIR: $TEST_DIR"
+echo "📂 Contents before: $(ls -la)"
 
-"$BIN" --interactive <<EOF
+echo "🚀 Running create-repo with --interactive"
+OUTPUT_FILE="$TEST_DIR/output.log"
+
+"$BIN" --interactive <<EOF >"$OUTPUT_FILE" 2>&1
 my-test-repo
 n
 EOF
 
-echo "📂 Contents of $TEST_DIR:"
+RC=$?
+echo "🔧 Exit code: $RC"
+echo "📜 Output:"
+cat "$OUTPUT_FILE" || echo "⚠️ No output captured"
+
+echo "📂 Contents after:"
 ls -la
 
 if [ ! -d .git ]; then
