@@ -97,7 +97,9 @@ git_init_repo() {
   local log_file="$6"
   local repo_list="$HOME/.repo-autosync.list"
 
-  # Инициализация git, если нужно
+  echo "🛠️ Initializing Git repository..."
+
+  # Ensure .git exists
   if [ ! -d ".git" ]; then
     git init -b "$branch"
   fi
@@ -105,21 +107,22 @@ git_init_repo() {
   git add .
   git commit -m "Initial commit - $timestamp" >/dev/null 2>&1 || true
 
-  # Добавляем origin, если не существует
+  # Add origin if not exists
   if ! git remote | grep -q origin; then
     remote_url=$(get_remote_url "$repo_name" "$platform")
     git remote add origin "$remote_url"
   fi
 
-  # Создаём файл списка, если его нет
+  # Create list file if not exists
   [[ ! -f "$repo_list" ]] && touch "$repo_list"
 
-  # Добавляем текущий путь, если не был добавлен
+  # Add path to autosync list if not present
   if ! grep -Fxq "$PWD" "$repo_list"; then
     echo "$PWD" >> "$repo_list"
+    echo "✅ Repo added to autosync list: $PWD"
   fi
 
-  # Пушим, если не отключено переменной
+  # Handle push logic
   if [[ "$NO_PUSH" == "true" ]]; then
     if [[ "$dry_run" == "true" ]]; then
       echo "🚫 Dry-run mode: git push skipped"
@@ -131,4 +134,8 @@ git_init_repo() {
   fi
 
   log_info "Repo '$repo_name' initialized on '$platform' at $PWD" "$log_file"
+
+  if [[ "$dry_run" == "true" ]]; then
+    echo "✅ Dry-run completed successfully, repo was registered."
+  fi
 }
