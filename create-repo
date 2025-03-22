@@ -69,7 +69,15 @@ main() {
 
   # Определение платформы
   platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag")
-  [[ -z "$platform" ]] && echo -e "${RED}❌ No Git platform detected.${RESET}" && exit 1
+  if [[ -z "$platform" ]]; then
+    if [[ "$dry_run" == "true" ]]; then
+      echo -e "${YELLOW}⚠️ No platform detected, continuing due to dry-run.${RESET}"
+      platform="unknown"
+    else
+      echo -e "${RED}❌ No Git platform detected.${RESET}"
+      exit 1
+    fi
+  fi
 
   # Установка значений по умолчанию
   repo=${repo:-$(basename "$PWD")}
