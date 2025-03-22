@@ -1,0 +1,49 @@
+#!/bin/bash
+set -e
+set -x
+
+echo "🧪 Testing double tracking corner case..."
+
+BIN="${CREATE_REPO_BIN:-./create-repo}"
+TMP_DIR=$(mktemp -d)
+cd "$TMP_DIR"
+echo "📁 TMP_DIR: $TMP_DIR"
+
+# Инициализация Git
+git init -b main &>/dev/null
+git config user.email "ci@example.com"
+git config user.name "CI User"
+echo "# Double tracking test" > README.md
+git add README.md
+git commit -m "init" &>/dev/null
+
+# Добавим фейковый remote
+git remote add origin https://example.com/fake.git
+
+# Запускаем create-repo (dry-run)
+"$BIN" --dry-run --platform=github || {
+  echo "❌ create-repo failed on first run"
+  exit 1
+}
+
+# Проверим, что папка добавлена
+if ! grep -Fxq "$TMP_DIR" ~/.repo-autosync.list; then
+  echo "❌ Repo not tracked after first run"
+  exit 1
+fi
+
+# Попробуем второй раз
+"$BIN" --dry-run --platform=github || {
+  echo "❌ create-repo failed on second run"
+  exit 1
+}
+
+# Убедимся, что нет дубликата
+COUNT=$(grep -Fx "$TMP_DIR" ~/.repo-autosync.list | wc -l)
+if [[ "$COUNT" -gt 1 ]]; then
+  echo "❌ Path is duplicated in ~/.repo-autosync.list"
+  grep -F "$TMP_DIR" ~/.repo-autosync.list
+  exit 1
+fi
+
+echo "✅ Double tracking test passed"
