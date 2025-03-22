@@ -27,6 +27,14 @@ git commit -m "init" &>/dev/null
 # Добавим фейковый origin, чтобы избежать ошибок при push
 git remote add origin https://example.com/fake.git
 
+# Диагностика перед запуском
+echo "ℹ️ git status:"
+git status
+echo "ℹ️ current branch:"
+git branch
+echo "ℹ️ git remote -v:"
+git remote -v
+
 # Запускаем create-repo в dry-run режиме
 echo "▶️ Running create-repo with --dry-run..."
 "$BIN" --dry-run > create-repo-output.log 2>&1
@@ -34,7 +42,11 @@ EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
   echo "❌ create-repo failed with exit code $EXIT_CODE. Output:"
-  cat create-repo-output.log
+  if [ -f create-repo-output.log ]; then
+    cat create-repo-output.log
+  else
+    echo "⚠️  create-repo-output.log not found!"
+  fi
   exit 1
 fi
 
