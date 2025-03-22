@@ -5,22 +5,19 @@ echo "🧪 Testing git init..."
 
 BIN="${CREATE_REPO_BIN:-./create-repo}"
 
-TEMP_DIR=$(mktemp -d)
-echo "📁 TEMP_DIR: $TEMP_DIR"
+TEST_DIR="$HOME/test-git-dir-$$"
+mkdir -p "$TEST_DIR"
+cd "$TEST_DIR"
+echo "📁 TEST_DIR: $TEST_DIR"
 
-cd "$TEMP_DIR"
-
-# Запускаем скрипт с автопотоком ввода
 "$BIN" --interactive <<EOF
 my-test-repo
 n
 EOF
 
-# Показываем структуру директории после запуска
-echo "📂 Contents of $TEMP_DIR:"
+echo "📂 Contents of $TEST_DIR:"
 ls -la
 
-# Проверяем наличие .git
 if [ ! -d .git ]; then
   echo "❌ Git repo not initialized"
   exit 1
