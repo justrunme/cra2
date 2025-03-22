@@ -36,10 +36,12 @@ suggest_flag() {
 
   for flag in "${known_flags[@]}"; do
     local distance
-    distance=$(levenshtein "$input" "$flag")
-    if (( distance < min_distance )); then
-      min_distance=$distance
-      suggestion=$flag
+    if [[ -n "$input" && -n "$flag" ]]; then
+      distance=$(levenshtein "$input" "$flag")
+      if (( distance < min_distance )); then
+        min_distance=$distance
+        suggestion=$flag
+      fi
     fi
   done
 
@@ -53,23 +55,26 @@ levenshtein() {
   if [ "$1" = "$2" ]; then echo 0; return; fi
   local str1len=${#1}
   local str2len=${#2}
-  local d i j
-  for ((i=0; i<=str1len; i++)); do
-    d[i,0]=$i
-  done
-  for ((j=0; j<=str2len; j++)); do
-    d[0,$j]=$j
-  done
+  local i j
+  declare -A d
+
+  for ((i=0; i<=str1len; i++)); do d[$i,0]=$i; done
+  for ((j=0; j<=str2len; j++)); do d[0,$j]=$j; done
+
   for ((i=1; i<=str1len; i++)); do
     for ((j=1; j<=str2len; j++)); do
-      local cost=$(( ${1:i-1:1} != ${2:j-1:1} ))
+      local char1="${1:i-1:1}"
+      local char2="${2:j-1:1}"
+      local cost=$(( char1 != char2 ? 1 : 0 ))
+
       local del=$((d[i-1,j] + 1))
       local ins=$((d[i,j-1] + 1))
       local sub=$((d[i-1,j-1] + cost))
-      d[i,j]=$(min "$del" "$ins" "$sub")
+      d[$i,$j]=$(min "$del" "$ins" "$sub")
     done
   done
-  echo "${d[str1len,str2len]}"
+
+  echo "${d[$str1len,$str2len]}"
 }
 
 # Минимум из чисел
@@ -79,24 +84,4 @@ min() {
     (( n < m )) && m=$n
   done
   echo $m
-}
-# Получить URL для удаленного репозитория на основе платформы
-get_remote_url() {
-  local repo_name="$1"
-  local platform="$2"
-
-  case "$platform" in
-    github)
-      echo "https://github.com/your-username/$repo_name.git"
-      ;;
-    gitlab)
-      echo "https://gitlab.com/your-username/$repo_name.git"
-      ;;
-    bitbucket)
-      echo "https://bitbucket.org/your-username/$repo_name.git"
-      ;;
-    *)
-      echo "https://example.com/$repo_name.git"
-      ;;
-  esac
 }
