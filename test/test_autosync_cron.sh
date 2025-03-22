@@ -11,12 +11,12 @@ cd "$TMP_DIR"
 echo "📁 TMP_DIR: $TMP_DIR"
 
 # Удалим старые следы
-rm -f ~/.repo-autosync.list ~/.create-repo.log ~/.create-repo.conf
+rm -f ~/.repo-autosync.list ~/.create-repo.log ~/.create-repo.conf ~/.create-repo.platforms
 
 # Создаем конфиг заранее, чтобы избежать интерактива
-echo "platform=github" > ~/.create-repo.conf
+echo "default_branch=main" > ~/.create-repo.conf
 
-# Создаем пустой файл автосинхронизации (fix for dry-run mode)
+# Создаем пустой файл автосинхронизации (нужно для dry-run)
 touch ~/.repo-autosync.list
 
 # Создаем dummy git репозиторий
@@ -38,18 +38,14 @@ git branch
 echo "ℹ️ git remote -v:"
 git remote -v
 
-# Запускаем create-repo в dry-run режиме с NO_PUSH
-echo "▶️ Running create-repo with --dry-run and NO_PUSH=true..."
-NO_PUSH=true "$BIN" --dry-run > create-repo-output.log 2>&1
+# Запускаем create-repo в dry-run режиме
+echo "▶️ Running create-repo with --dry-run..."
+"$BIN" --dry-run > create-repo-output.log 2>&1
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
   echo "❌ create-repo failed with exit code $EXIT_CODE. Output:"
-  if [ -f create-repo-output.log ]; then
-    cat create-repo-output.log
-  else
-    echo "⚠️  create-repo-output.log not found!"
-  fi
+  cat create-repo-output.log || echo "(log missing)"
   exit 1
 fi
 
@@ -62,7 +58,7 @@ if ! grep -q "$TMP_DIR" ~/.repo-autosync.list; then
 fi
 echo "✅ Repo added to autosync list"
 
-# Добавляем файл и коммитим (но не пушим)
+# Добавляем файл и коммитим (без пуша)
 echo "Test $(date)" > test-sync.txt
 git add test-sync.txt
 git commit -m "Test auto-sync" &>/dev/null
@@ -76,8 +72,8 @@ NO_PUSH=true update-all --pull-only > "$UPDATE_LOG" 2>&1 || {
   exit 1
 }
 
-# Проверим, был ли выполнен git pull
-if ! grep -q "pull" "$UPDATE_LOG"; then
+# Проверяем наличие git pull
+if ! grep -qi "pull" "$UPDATE_LOG"; then
   echo "❌ update-all log does not contain 'pull':"
   cat "$UPDATE_LOG"
   exit 1
