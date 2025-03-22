@@ -6,7 +6,10 @@ trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 SCRIPT_VERSION="{{VERSION}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# ✅ Экспорт переменных (если вдруг unset)
+echo "✅ create-repo started"
+echo "ℹ️ SCRIPT_DIR: $SCRIPT_DIR"
+
+# ✅ Экспорт переменных
 export PLATFORM_MAP="${PLATFORM_MAP:-$HOME/.create-repo.platforms}"
 export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
 export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
@@ -24,6 +27,8 @@ done
 
 # 🏁 Основная функция
 main() {
+  echo "🚀 Entered main()"
+
   validate_flags "$@"
 
   repo=""
