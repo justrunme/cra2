@@ -4,6 +4,7 @@
 source "$SCRIPT_DIR/modules/utils.sh"
 
 validate_flags() {
+  # Обновлённый список валидных флагов:
   VALID_FLAGS=(
     --help
     --interactive
@@ -27,6 +28,7 @@ validate_flags() {
     --dry-run
     --sync-now
     --doctor
+    --only-tags=  # ← добавили сюда
   )
 
   echo "🧪 Validating flags: $*"
@@ -38,6 +40,9 @@ validate_flags() {
       match=false
       for valid in "${VALID_FLAGS[@]}"; do
         echo "   ↪ Comparing to valid flag: '$valid'"
+        # Проверяем:
+        #   - exact match: $valid == $arg
+        #   - match base + '=': (пример: base=--only-tags, $valid=--only-tags=)
         if [[ "$valid" == "$arg" || "$valid" == "$base" || "$valid" == "$base=" ]]; then
           match=true
           break
@@ -50,6 +55,7 @@ validate_flags() {
         echo -e "${YELLOW}➡️  Tip: run 'create-repo --help' to see available options${RESET}"
         exit 1
       fi
+
     elif [[ "$arg" == -* ]]; then
       echo -e "${RED}❌ Unknown short flag: ${BOLD}$arg${RESET}"
       suggest_flag "$arg"
