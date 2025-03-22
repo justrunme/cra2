@@ -7,7 +7,8 @@ detect_platform() {
 
   if [[ -n "$override" ]]; then
     echo "$folder=$override" >> "$PLATFORM_MAP"
-    echo "$override"; return
+    echo "$override"
+    return
   fi
 
   if [[ -f "$PLATFORM_MAP" ]]; then
@@ -22,17 +23,20 @@ detect_platform() {
 
   if [[ ${#platforms[@]} -eq 1 ]]; then
     echo "${platforms[0]}"
+    return
   elif [[ ${#platforms[@]} -gt 1 ]]; then
     echo -ne "${YELLOW}❓ Choose platform [github/gitlab/bitbucket]: ${RESET}"
     read chosen
     echo "$folder=$chosen" >> "$PLATFORM_MAP"
     echo "$chosen"
+    return
+  fi
+
+  # ❗ если ничего не найдено
+  if [[ "$is_dry_run" == "true" ]]; then
+    echo "github"  # ← возвращаем фиктивную платформу, чтобы dry-run прошёл
   else
-    if [[ "$is_dry_run" == "true" ]]; then
-      echo "unknown"
-    else
-      echo ""
-    fi
+    echo ""
   fi
 }
 
