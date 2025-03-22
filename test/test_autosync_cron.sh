@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 set -x
-trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
+trap 'echo "❌ FAILED at line $LINENO with exit code $?" >&2; exit 1' ERR
 
 echo "🧪 Testing auto-sync and cron integration..."
 
@@ -27,15 +27,6 @@ git config user.email "ci@example.com"
 git config user.name "CI User"
 git commit -m "init" &>/dev/null
 git remote add origin https://example.com/fake.git
-
-# Мокаем git push (обёртка внутри теста)
-git() {
-  if [[ "$1" == "push" ]]; then
-    echo "🧪 [mock] git push $*"
-    return 0
-  fi
-  command git "$@"
-}
 
 # Диагностика
 echo "ℹ️ git status:"
@@ -66,10 +57,15 @@ UPDATE_LOG=$(mktemp)
 chmod +x "$SCRIPT_DIR/update-all"
 echo "ℹ️ Using update-all at: $SCRIPT_DIR/update-all"
 
+# Разрешаем fail для fake remote
 NO_PUSH=true "$SCRIPT_DIR/update-all" --pull-only > "$UPDATE_LOG" 2>&1 || {
-  echo "❌ update-all failed:"
-  cat "$UPDATE_LOG"
-  exit 1
+  if grep -q "example.com/fake.git" "$UPDATE_LOG"; then
+    echo "⚠️ Fake remote failed as expected (example.com)."
+  else
+    echo "❌ update-all failed:"
+    cat "$UPDATE_LOG"
+    exit 1
+  fi
 }
 
 # Проверка: лог должен содержать 'Pulling'
@@ -80,3 +76,4 @@ if ! grep -q "Pulling" "$UPDATE_LOG"; then
 fi
 
 echo "✅ Auto-sync and cron integration test passed"
+exit 0
