@@ -25,11 +25,15 @@ git commit -m "init" &>/dev/null
 echo "▶️ Running create-repo to enable auto-sync..."
 
 # Логируем вывод команды для диагностики
-"$BIN" --platform=github || { 
-  echo "❌ Failed to run create-repo. Here's the output of the failed command:" 
-  "$BIN" --platform=github 
-  exit 1 
-}
+output=$("$BIN" --platform=github 2>&1)
+exit_code=$?
+
+# Проверка на ошибки
+if [ $exit_code -ne 0 ]; then
+  echo "❌ Failed to run create-repo. Here's the output of the failed command:"
+  echo "$output"
+  exit 1
+fi
 
 # Проверяем .repo-autosync.list
 echo "📂 Checking if repo was added to .repo-autosync.list..."
