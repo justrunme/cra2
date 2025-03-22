@@ -4,7 +4,7 @@
 source "$SCRIPT_DIR/modules/utils.sh"
 
 validate_flags() {
-  VALID_FLAGS=(
+  VALID_FLAGS=( 
     --help
     --interactive
     --platform=
@@ -30,11 +30,14 @@ validate_flags() {
 
   for arg in "$@"; do
     if [[ "$arg" == --* ]]; then
-      # поддержка параметров вида --log=errors
-      base="${arg%%=*}"
+      # поддержка параметров вида --log=errors или --platform=github
+      base="${arg%%=*}" # извлекаем сам флаг
       match=false
       for valid in "${VALID_FLAGS[@]}"; do
-        [[ "$valid" == "$base" || "$valid" == "$arg" ]] && match=true && break
+        if [[ "$valid" == "$base"* ]]; then
+          match=true
+          break
+        fi
       done
       if ! $match; then
         echo -e "${RED}❌ Unknown flag: $arg${RESET}"
