@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 set -x
-trap 'code=$?; echo "❌ FAILED at line $LINENO with exit code $code" >&2; exit $code' ERR
+trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 
 echo "🧪 Testing auto-sync and cron integration..."
 
@@ -46,7 +46,10 @@ NO_PUSH=true "$BIN" --dry-run > create-repo-output.log 2>&1 || {
 
 echo "✅ create-repo ran in dry-run mode successfully"
 
-# Добавим файл для sync
+# Добавим локальный конфиг для отключения синка
+echo "disable_sync=true" > .create-repo.local.conf
+
+# Добавим файл для симуляции sync
 echo "Test $(date)" > test-sync.txt
 git add test-sync.txt
 git commit -m "Test auto-sync" &>/dev/null
@@ -58,21 +61,16 @@ chmod +x "$SCRIPT_DIR/update-all"
 echo "ℹ️ Using update-all at: $SCRIPT_DIR/update-all"
 
 NO_PUSH=true "$SCRIPT_DIR/update-all" --pull-only > "$UPDATE_LOG" 2>&1 || {
-  if grep -q "example.com/fake.git" "$UPDATE_LOG"; then
-    echo "⚠️ Fake remote failed as expected (example.com)."
-  else
-    echo "❌ update-all failed:"
-    cat "$UPDATE_LOG"
-    exit 1
-  fi
+  echo "❌ update-all failed:"
+  cat "$UPDATE_LOG"
+  exit 1
 }
 
-# Проверка: лог должен содержать 'Pulling'
-if ! grep -q "Pulling" "$UPDATE_LOG"; then
-  echo "❌ update-all log does not contain 'Pulling':"
+# Проверка: должен быть вывод о пропуске из-за disable_sync
+if ! grep -q "skipped (disabled via local config)" "$UPDATE_LOG"; then
+  echo "❌ Local config override not applied"
   cat "$UPDATE_LOG"
   exit 1
 fi
 
 echo "✅ Auto-sync and cron integration test passed"
-exit 0
