@@ -15,9 +15,11 @@ git config user.email "ci@local.test"
 touch file.txt
 git add .
 git commit -m "Initial commit"
-git remote add origin https://example.com/fake.git
 
-# ✅ Установка upstream, чтобы pull не падал
+# ✅ Безопасный фейковый remote (локальный путь)
+git remote add origin .
+
+# Установка upstream (не обязательно, но можно)
 git branch --set-upstream-to=origin/master master || true
 
 # Тестируем команду
