@@ -35,3 +35,17 @@ log_info() {
   echo -e "${CYAN}ℹ️ $message${RESET}"
   echo "$(date "+%Y-%m-%d %H:%M:%S") | INFO | $message" >> "$LOG_FILE"
 }
+
+show_final_message() {
+  local repo="$1"
+  local branch="$2"
+  local path="$3"
+  local list="$4"
+  local platform="$5"
+
+  echo -e "${GREEN}✅ Repository '$repo' is set up!${RESET}"
+  echo -e "📦 Branch:     ${CYAN}$branch${RESET}"
+  echo -e "📂 Directory:  ${DIM}$path${RESET}"
+  echo -e "☁️ Platform:   ${CYAN}$platform${RESET}"
+  echo -e "📝 Tracked in: ${DIM}$list${RESET}"
+}
