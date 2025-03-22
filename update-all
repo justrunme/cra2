@@ -1,11 +1,11 @@
 #!/bin/bash
-set -e  # Остановиться при ошибке
-set -x  # Показывать каждую команду
+set -e
+set -x
 trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 
-echo "🔎 Debugging update-all..."
+echo -e "${BOLD}🔄 Starting sync of tracked repositories...${RESET}"
 
-# === Determine SCRIPT_DIR
+# === Resolve path to modules ===
 if [[ -f "/opt/cra2/modules/colors.sh" ]]; then
   SCRIPT_DIR="/opt/cra2"
 else
@@ -13,20 +13,21 @@ else
 fi
 MODULES_DIR="$SCRIPT_DIR/modules"
 
-# === Load modules
+# === Load modules ===
 source "$MODULES_DIR/colors.sh"
 source "$MODULES_DIR/logger.sh"
 source "$MODULES_DIR/config.sh"
 source "$MODULES_DIR/platform.sh"
 source "$MODULES_DIR/git.sh"
 source "$MODULES_DIR/utils.sh"
-source "$MODULES_DIR/repo.sh"
+source "$MODULES_DIR/repo.sh"  # содержит функцию sync_now()
 
+# === Default flags ===
 PULL_ONLY=false
 DRY_RUN=false
 ONLY_TAGS=""
 
-echo "▶️ Parsing flags: $*"
+# === Parse flags ===
 for arg in "$@"; do
   case "$arg" in
     --pull-only)
@@ -50,16 +51,15 @@ for arg in "$@"; do
   esac
 done
 
+# === File paths ===
 LIST_FILE="$HOME/.repo-autosync.list"
 LOG_FILE="$HOME/.create-repo.log"
 ERROR_LOG="$HOME/.create-repo-errors.log"
 
-# 1) Lock if enable_lock=true
-echo "ℹ️ Loading config..."
-load_config
-
+# === 1) Optional Locking (if enable_lock=true in global config)
+echo "ℹ️ Loading global config..."
+load_config  # загружает ~/.create-repo.conf, где может быть enable_lock=true
 if [[ "$enable_lock" == "true" ]]; then
-  echo "🔒 Attempting to lock /tmp/update-all.lock"
   LOCKFILE="/tmp/update-all.lock"
   exec 200>"$LOCKFILE"
   if ! flock -n 200; then
@@ -73,27 +73,23 @@ if [ ! -f "$LIST_FILE" ]; then
   exit 0
 fi
 
-echo -e "${BOLD}🔄 Starting sync of tracked repositories...${RESET}"
-
-FAIL_COUNT=0  # счётчик, если хотим отслеживать, что хотя бы один репо упал
+FAIL_COUNT=0
 
 while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
   [ -z "$repo_path" ] && continue
-
   if [ ! -d "$repo_path/.git" ]; then
     echo -e "${RED}❌ Not a Git repo: $repo_path${RESET}"
     continue
   fi
 
-  cd "$repo_path"
+  cd "$repo_path" || continue
   PROJECT_NAME=$(basename "$repo_path")
+  echo -e "\n📁 ${BOLD}$PROJECT_NAME${RESET} [${DIM}$repo_path${RESET}]"
 
-  echo -e "\n📁 ${BOLD}$PROJECT_NAME${RESET} (${DIM}$repo_path${RESET})"
-
-  # Локальный конфиг
+  # === Load local config ===
   LOCAL_CONF="$repo_path/.create-repo.local.conf"
   if [ -f "$LOCAL_CONF" ]; then
-    echo "ℹ️ source local config: $LOCAL_CONF"
+    echo "ℹ️ Loading local config: $LOCAL_CONF"
     source "$LOCAL_CONF"
     if [[ "$disable_sync" == "true" ]]; then
       echo -e "🚫 ${YELLOW}$PROJECT_NAME skipped (disabled via local config)${RESET}"
@@ -101,7 +97,7 @@ while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
     fi
   fi
 
-  # selective sync
+  # === Selective sync by tags ===
   if [ -n "$ONLY_TAGS" ]; then
     if [[ -z "$sync_tags" ]]; then
       echo "🚫 $PROJECT_NAME has no sync_tags, skipping"
@@ -119,28 +115,24 @@ while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
     export PULL_ONLY=true
   fi
   if [ "$DRY_RUN" = true ]; then
-    echo "🧪 Dry-run mode, set NO_PUSH=true"
+    echo "🧪 Dry-run mode: setting NO_PUSH=true"
     export NO_PUSH=true
   fi
 
-  echo "🚀 Calling sync_now..."
+  echo "🚀 Calling sync_now()..."
   if sync_now; then
-    echo "✅ sync_now returned success (code $?)"
     log_success "$PROJECT_NAME" "$repo_path"
   else
-    # sync_now вернул код ≠ 0
-    echo "❌ Sync failed for $PROJECT_NAME (code $?)."
+    echo -e "${RED}❌ Sync failed for $PROJECT_NAME${RESET}"
     log_error "$PROJECT_NAME" "$repo_path"
     FAIL_COUNT=$((FAIL_COUNT+1))
-    # Не прерываем полностью, идём к следующему репо
   fi
 done < "$LIST_FILE"
 
-echo "ℹ️ Done looping over repos. FAIL_COUNT=$FAIL_COUNT"
+echo "ℹ️ Done syncing repos. FAIL_COUNT=$FAIL_COUNT"
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
   echo "⚠️ Some repos failed to sync."
-  # Если хотим, выходим кодом 1
   exit 1
 fi
 
