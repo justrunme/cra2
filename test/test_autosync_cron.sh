@@ -35,21 +35,9 @@ git branch
 echo "ℹ️ git remote -v:"
 git remote -v
 
-# Подменим git push, чтобы избежать реального пуша (мокаем)
-GIT_ORIG="$(which git)"
-function git() {
-  if [[ "$1" == "push" ]]; then
-    echo "⚠️  Mocked git push"
-    return 0
-  else
-    "$GIT_ORIG" "$@"
-  fi
-}
-export -f git
-
-# Запускаем create-repo в dry-run режиме
-echo "▶️ Running create-repo with --dry-run..."
-"$BIN" --dry-run > create-repo-output.log 2>&1
+# Запускаем create-repo в dry-run режиме с NO_PUSH
+echo "▶️ Running create-repo with --dry-run and NO_PUSH=true..."
+NO_PUSH=true "$BIN" --dry-run > create-repo-output.log 2>&1
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
@@ -77,7 +65,7 @@ git commit -m "Test auto-sync" &>/dev/null
 # Запускаем update-all
 echo "▶️ Running update-all..."
 UPDATE_LOG=$(mktemp)
-update-all --pull-only > "$UPDATE_LOG" 2>&1 || {
+NO_PUSH=true update-all --pull-only > "$UPDATE_LOG" 2>&1 || {
   echo "❌ update-all failed:"
   cat "$UPDATE_LOG"
   exit 1
