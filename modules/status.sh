@@ -61,4 +61,23 @@ print_repo_status() {
     echo "🔴 Auto-sync:      DISABLED ❌"
   fi
 
-  #
+  # Global config: Sync interval (cron)
+  if [ -f "$HOME/.create-repo.conf" ]; then
+    local interval
+    interval=$(grep "default_cron_interval=" "$HOME/.create-repo.conf" | cut -d= -f2)
+    echo "⏱ Sync interval:  ${interval:-1} min"
+  fi
+
+  echo ""
+}
+
+# Если требуется, можно добавить функцию для проверки статуса всех репозиториев:
+print_advanced_status_all() {
+  echo "🔍 Advanced Status for All Tracked Repos:"
+  while IFS= read -r path || [[ -n "$path" ]]; do
+    [ -z "$path" ] && continue
+    echo "===== Repository: $path ====="
+    (cd "$path" && print_repo_status)
+    echo ""
+  done < "$HOME/.repo-autosync.list"
+}
