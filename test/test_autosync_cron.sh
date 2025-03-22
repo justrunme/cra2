@@ -22,6 +22,7 @@ git config user.name "Test User"
 git commit -m "init" &>/dev/null
 
 # Проверим, что файл create-repo существует и исполним
+echo "📂 Checking if create-repo is executable..."
 if [ ! -x "$BIN" ]; then
   echo "❌ File $BIN is not executable or not found"
   exit 1
