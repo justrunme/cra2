@@ -27,6 +27,13 @@ detect_platform() {
     read chosen
     echo "$folder=$chosen" >> "$PLATFORM_MAP"
     echo "$chosen"
+  else
+    # Нет платформ — но в режиме dry-run можно вернуть "unknown"
+    if [[ "$dry_run" == "true" ]]; then
+      echo "unknown"
+    else
+      echo ""
+    fi
   fi
 }
 
