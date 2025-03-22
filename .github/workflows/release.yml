@@ -1,82 +1,178 @@
-#!/bin/bash
-set -e
+name: Auto Tag, Build, Test and Release (DEB + macOS)
 
-echo "🧪 Testing auto-sync and cron integration..."
+on:
+  push:
+    branches:
+      - main
 
-BIN="${CREATE_REPO_BIN:-./create-repo}"
+jobs:
+  autotag:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set_version.outputs.version }}
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
 
-# Создаем временную директорию
-TMP_DIR=$(mktemp -d)
-cd "$TMP_DIR"
-echo "📁 TMP_DIR: $TMP_DIR"
+      - name: 🔖 Generate version tag
+        id: set_version
+        run: |
+          git fetch --tags
+          latest=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n1)
+          if [[ -z "$latest" ]]; then
+            major=1; minor=0; patch=0
+          else
+            IFS='.' read -r major minor patch <<< "$latest"
+            patch=$((patch + 1))
+          fi
+          version="v$major.$minor.$patch"
+          git tag -f "$version"
+          git push origin -f "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-# Удалим старые следы
-rm -f ~/.repo-autosync.list ~/.create-repo.log ~/.create-repo.conf
+  test:
+    runs-on: ubuntu-latest
+    needs: autotag
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
 
-# Создаем конфиг заранее, чтобы избежать интерактива
-echo "platform=github" > ~/.create-repo.conf
+      - name: 🧪 Run all tests from test/
+        run: |
+          set -x
+          chmod +x create-repo || echo "⚠️ Cannot chmod create-repo"
+          chmod +x test/*.sh test/run-all-tests.sh || echo "⚠️ Cannot chmod test files"
+          echo "🐚 create-repo file:"
+          file create-repo || echo "⚠️ file command failed"
+          echo "🌐 Current dir: $(pwd)"
+          export CREATE_REPO_BIN="$PWD/create-repo"
+          bash test/run-all-tests.sh
 
-# Создаем dummy git репозиторий
-git init -b main &>/dev/null
-echo "# Auto-sync test" > README.md
-git add README.md
-git config user.email "ci@example.com"
-git config user.name "CI User"
-git commit -m "init" &>/dev/null
+  build-deb:
+    runs-on: ubuntu-latest
+    needs: [autotag, test]
+    steps:
+      - uses: actions/checkout@v4
 
-# Добавим фейковый origin, чтобы избежать ошибок при push
-git remote add origin https://example.com/fake.git
+      - name: ✅ Verify required modules (Linux)
+        run: |
+          REQUIRED_MODULES=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh)
+          for mod in "${REQUIRED_MODULES[@]}"; do
+            if [ ! -f "modules/$mod" ]; then
+              echo "❌ Missing module: $mod"
+              exit 1
+            fi
+          done
 
-# Диагностика перед запуском
-echo "ℹ️ git status:"
-git status
-echo "ℹ️ current branch:"
-git branch
-echo "ℹ️ git remote -v:"
-git remote -v
+      - name: 📦 Build DEB package
+        run: |
+          VERSION="${{ needs.autotag.outputs.version }}"
+          mkdir -p pkg/usr/local/bin/modules pkg/DEBIAN
+          cp create-repo update-all install-create-repo.sh pkg/usr/local/bin/
+          cp modules/*.sh pkg/usr/local/bin/modules/
+          chmod +x pkg/usr/local/bin/*
+          sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/modules/version.sh
+          sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
 
-# Запускаем create-repo в dry-run режиме
-echo "▶️ Running create-repo with --dry-run..."
-"$BIN" --dry-run > create-repo-output.log 2>&1
-EXIT_CODE=$?
+          echo "Package: create-repo" > pkg/DEBIAN/control
+          echo "Version: ${VERSION#v}" >> pkg/DEBIAN/control
+          echo "Section: utils" >> pkg/DEBIAN/control
+          echo "Priority: optional" >> pkg/DEBIAN/control
+          echo "Architecture: all" >> pkg/DEBIAN/control
+          echo "Maintainer: you@example.com" >> pkg/DEBIAN/control
+          echo "Description: Git auto-sync CLI with modular structure" >> pkg/DEBIAN/control
 
-if [ $EXIT_CODE -ne 0 ]; then
-  echo "❌ create-repo failed with exit code $EXIT_CODE. Output:"
-  if [ -f create-repo-output.log ]; then
-    cat create-repo-output.log
-  else
-    echo "⚠️  create-repo-output.log not found!"
-  fi
-  exit 1
-fi
+          echo '#!/bin/bash' > pkg/DEBIAN/postinst
+          echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
+          chmod +x pkg/DEBIAN/postinst
 
-# Проверяем запись в .repo-autosync.list
-if ! grep -q "$TMP_DIR" ~/.repo-autosync.list; then
-  echo "❌ Repo not found in ~/.repo-autosync.list"
-  exit 1
-fi
-echo "✅ Repo added to autosync list"
+          dpkg-deb --build pkg
+          mv pkg.deb create-repo_${VERSION#v}.deb
+          sha256sum create-repo_*.deb > checksums.txt
 
-# Добавляем файл и коммитим (но не пушим)
-echo "Test $(date)" > test-sync.txt
-git add test-sync.txt
-git commit -m "Test auto-sync" &>/dev/null
+      - name: 📤 Upload DEB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-artifacts
+          path: |
+            create-repo_*.deb
+            checksums.txt
 
-# Запускаем update-all
-echo "▶️ Running update-all..."
-UPDATE_LOG=$(mktemp)
-update-all --pull-only > "$UPDATE_LOG" 2>&1 || {
-  echo "❌ update-all failed:"
-  cat "$UPDATE_LOG"
-  exit 1
-}
+  build-mac:
+    runs-on: macos-latest
+    needs: [autotag, test]
+    steps:
+      - uses: actions/checkout@v4
 
-# Проверим, был ли выполнен git pull
-if ! grep -q "pull" "$UPDATE_LOG"; then
-  echo "❌ update-all log does not contain 'pull':"
-  cat "$UPDATE_LOG"
-  exit 1
-fi
-echo "✅ update-all ran successfully with git pull"
+      - name: ✅ Verify required modules (macOS)
+        run: |
+          REQUIRED_MODULES=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh)
+          for mod in "${REQUIRED_MODULES[@]}"; do
+            if [ ! -f "modules/$mod" ]; then
+              echo "❌ Missing module: $mod"
+              exit 1
+            fi
+          done
 
-echo "✅ Auto-sync and cron integration test passed"
+      - name: 📦 Build PKG package
+        run: |
+          VERSION="${{ needs.autotag.outputs.version }}"
+          mkdir -p pkg-root/usr/local/bin/modules
+          cp create-repo update-all install-create-repo.sh pkg-root/usr/local/bin/
+          cp modules/*.sh pkg-root/usr/local/bin/modules/
+          chmod +x pkg-root/usr/local/bin/*
+          sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/modules/version.sh
+          sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
+
+          pkgbuild \
+            --identifier com.justrunme.create-repo \
+            --version ${VERSION#v} \
+            --install-location / \
+            --root pkg-root \
+            create-repo_${VERSION#v}.pkg
+
+          shasum -a 256 create-repo_*.pkg >> checksums.txt
+
+      - name: 📤 Upload PKG Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-artifacts
+          path: |
+            create-repo_*.pkg
+            checksums.txt
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-deb, build-mac, autotag]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 📥 Download DEB Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-artifacts
+
+      - name: 📥 Download PKG Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-artifacts
+
+      - name: 🚀 Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.autotag.outputs.version }}
+          name: Release ${{ needs.autotag.outputs.version }}
+          body: |
+            🔄 Auto-generated release
+            ✏️ Version: ${{ needs.autotag.outputs.version }}
+            📦 Includes:
+            - create-repo
+            - update-all
+            - install-create-repo.sh
+            - All modules
+            - .deb and .pkg installers
+          files: |
+            create-repo_*.deb
+            create-repo_*.pkg
+            install-create-repo.sh
+            checksums.txt
