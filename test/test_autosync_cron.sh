@@ -27,10 +27,8 @@ if [ ! -x "$BIN" ]; then
   exit 1
 fi
 
-# Запускаем create-repo без --disable-sync
-echo "▶️ Running create-repo to enable auto-sync..."
-
 # Логируем вывод команды для диагностики
+echo "▶️ Running create-repo to enable auto-sync..."
 output=$("$BIN" --platform=github 2>&1)
 exit_code=$?
 
