@@ -88,5 +88,43 @@ perform_dry_run() {
   fi
 }
 
-# Создание списка, если отсутствует (используется в git_init_repo)
-[[ ! -f "$HOME/.repo-autosync.list" ]] && touch "$HOME/.repo-autosync.list"
+git_init_repo() {
+  local repo_name="$1"
+  local branch="$2"
+  local platform="$3"
+  local visibility="$4"
+  local timestamp="$5"
+  local log_file="$6"
+  local repo_list="$HOME/.repo-autosync.list"
+
+  # Инициализация git, если нужно
+  if [ ! -d ".git" ]; then
+    git init -b "$branch"
+  fi
+
+  git add .
+  git commit -m "Initial commit - $timestamp" >/dev/null 2>&1 || true
+
+  # Добавляем origin, если не существует
+  if ! git remote | grep -q origin; then
+    remote_url=$(get_remote_url "$repo_name" "$platform")
+    git remote add origin "$remote_url"
+  fi
+
+  # Создаём файл списка, если его нет
+  [[ ! -f "$repo_list" ]] && touch "$repo_list"
+
+  # Добавляем текущий путь, если не был добавлен
+  if ! grep -Fxq "$PWD" "$repo_list"; then
+    echo "$PWD" >> "$repo_list"
+  fi
+
+  # Пушим, если не отключено переменной
+  if [[ "$NO_PUSH" == "true" ]]; then
+    echo "⚠️ Skipping git push due to NO_PUSH=true"
+  else
+    git push --set-upstream origin "$branch"
+  fi
+
+  log_info "Repo '$repo_name' initialized on '$platform' at $PWD" "$log_file"
+}
