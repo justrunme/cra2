@@ -64,7 +64,12 @@ sync_now() {
   git -C "$repo_path" pull --rebase || echo "⚠️ Pull failed."
   git -C "$repo_path" add . 
   git -C "$repo_path" commit -m "Auto-sync $(date '+%F %T')" 2>/dev/null
-  git -C "$repo_path" push || echo "Nothing to commit or push failed."
+
+  if [[ "$NO_PUSH" == "true" ]]; then
+    echo "⚠️ Skipping git push due to NO_PUSH=true"
+  else
+    git -C "$repo_path" push || echo "Nothing to commit or push failed."
+  fi
 }
 
 perform_pull_only() {
@@ -76,5 +81,9 @@ perform_pull_only() {
 perform_dry_run() {
   local branch=$(git -C "$(pwd)" symbolic-ref --short HEAD 2>/dev/null || echo "main")
   echo -e "🚀 Dry-run: git push origin $branch"
-  git -C "$(pwd)" push --dry-run origin "$branch"
+  if [[ "$NO_PUSH" == "true" ]]; then
+    echo "⚠️ Skipping git push (dry-run) due to NO_PUSH=true"
+  else
+    git -C "$(pwd)" push --dry-run origin "$branch"
+  fi
 }
