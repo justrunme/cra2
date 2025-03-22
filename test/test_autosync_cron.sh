@@ -24,8 +24,8 @@ git config user.email "ci@example.com"
 git config user.name "CI User"
 git commit -m "init" &>/dev/null
 
-# Удаляем origin, чтобы избежать реального push
-git remote remove origin 2>/dev/null || true
+# Добавим фейковый origin, чтобы избежать ошибок при push
+git remote add origin https://example.com/fake.git
 
 # Запускаем create-repo в dry-run режиме
 echo "▶️ Running create-repo with --dry-run..."
