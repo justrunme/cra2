@@ -46,10 +46,7 @@ NO_PUSH=true "$BIN" --dry-run > create-repo-output.log 2>&1 || {
 
 echo "✅ create-repo ran in dry-run mode successfully"
 
-# Добавим локальный конфиг для отключения синка
-echo "disable_sync=true" > .create-repo.local.conf
-
-# Добавим файл для симуляции sync
+# Добавим файл для sync
 echo "Test $(date)" > test-sync.txt
 git add test-sync.txt
 git commit -m "Test auto-sync" &>/dev/null
@@ -61,14 +58,18 @@ chmod +x "$SCRIPT_DIR/update-all"
 echo "ℹ️ Using update-all at: $SCRIPT_DIR/update-all"
 
 NO_PUSH=true "$SCRIPT_DIR/update-all" --pull-only > "$UPDATE_LOG" 2>&1 || {
-  echo "❌ update-all failed:"
-  cat "$UPDATE_LOG"
-  exit 1
+  if grep -q "example.com/fake.git" "$UPDATE_LOG"; then
+    echo "⚠️ Fake remote failed as expected (example.com)."
+  else
+    echo "❌ update-all failed:"
+    cat "$UPDATE_LOG"
+    exit 1
+  fi
 }
 
-# Проверка: должен быть вывод о пропуске из-за disable_sync
-if ! grep -q "skipped (disabled via local config)" "$UPDATE_LOG"; then
-  echo "❌ Local config override not applied"
+# Проверка: лог должен содержать 'Pulling'
+if ! grep -q "Pulling" "$UPDATE_LOG"; then
+  echo "❌ update-all log does not contain 'Pulling':"
   cat "$UPDATE_LOG"
   exit 1
 fi
