@@ -10,7 +10,7 @@ echo "👤 User: $(whoami)"
 
 SCRIPT_VERSION="{{VERSION}}"
 
-# === Determine SCRIPT_DIR properly
+# === 1) Determine SCRIPT_DIR
 if [[ -d "/opt/cra2/modules" ]]; then
   SCRIPT_DIR="/opt/cra2"
   echo "ℹ️ Using /opt/cra2 for modules"
@@ -18,15 +18,14 @@ else
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   echo "ℹ️ Using local script dir: $SCRIPT_DIR"
 fi
-
 echo "ℹ️ SCRIPT_DIR: $SCRIPT_DIR"
 
-# === Export shared vars ===
+# === 2) Export shared vars
 export PLATFORM_MAP="${PLATFORM_MAP:-$HOME/.create-repo.platforms}"
 export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
 export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 
-# === Load modules ===
+# === 3) Load modules
 for file in colors flags version update help config platform repo logger doctor utils; do
   full="$SCRIPT_DIR/modules/$file.sh"
   if [[ ! -f "$full" ]]; then
@@ -37,6 +36,7 @@ for file in colors flags version update help config platform repo logger doctor 
   source "$full"
 done
 
+# === 4) Main function
 main() {
   echo "🚀 Entered main()"
 
@@ -47,32 +47,35 @@ main() {
   interactive=false
   dry_run=false
 
+  # === Parse CLI args
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --help|-h) show_help; exit 0 ;;
-      --version) show_version; exit 0 ;;
-      --update) check_for_update; exit 0 ;;
-      --interactive) interactive=true ;;
-      --platform=*) platform_flag="${1#*=}" ;;
+      --help|-h)      show_help; exit 0 ;;
+      --version)      show_version; exit 0 ;;
+      --update)       check_for_update; exit 0 ;;
+      --interactive)  interactive=true ;;
+      --platform=*)   platform_flag="${1#*=}" ;;
       --platform-status) show_platform_bindings; exit 0 ;;
-      --status) print_status_all; exit 0 ;;
+      --status)       print_status_all; exit 0 ;;
       --log)
         [[ "$2" == "--errors" ]] && tail -n 10 "$HOME/.create-repo-errors.log" && exit 0
         tail -n 10 "$LOG_FILE"
         exit 0
         ;;
-      --list) print_repo_list; exit 0 ;;
+      --list)         print_repo_list; exit 0 ;;
       --remove)
         [[ "$2" == "--force" ]] && remove_repo_force "$(pwd)" && exit 0
         ;;
-      --pull-only) perform_pull_only; exit 0 ;;
+      --pull-only)    perform_pull_only; exit 0 ;;
       --dry-run)
         export NO_PUSH=true
         dry_run=true
         ;;
-      --sync-now) sync_now; exit 0 ;;
-      --doctor) doctor_check; exit 0 ;;
-      *) [[ -z "$repo" ]] && repo=$1 ;;
+      --sync-now)     sync_now; exit 0 ;;
+      --doctor)       doctor_check; exit 0 ;;
+      *) 
+        [[ -z "$repo" ]] && repo=$1
+        ;;
     esac
     shift
   done
@@ -103,7 +106,7 @@ main() {
   echo "📌 Visibility: $visibility"
   echo "📦 dry_run=$dry_run | NO_PUSH=$NO_PUSH"
 
-  generate_readme || echo "⚠️ Failed to generate README"
+  generate_readme    || echo "⚠️ Failed to generate README"
   generate_gitignore || echo "⚠️ Failed to generate .gitignore"
 
   git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
@@ -117,4 +120,5 @@ main() {
   exit 0
 }
 
+# === 5) Call main
 main "$@"
