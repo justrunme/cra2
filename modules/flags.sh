@@ -28,15 +28,17 @@ validate_flags() {
     --doctor
   )
 
-  echo "🧪 Validating flags: $*"
+  echo -e "${CYAN}🧪 DEBUG: Validating flags: ${BOLD}$*${RESET}"
 
   for arg in "$@"; do
-    echo "🔍 Checking flag: '$arg'"
+    echo -e "${CYAN}🔍 Checking flag: '${BOLD}$arg${RESET}${CYAN}'${RESET}"
+    
     if [[ "$arg" == --* ]]; then
-      base="${arg%%=*}"     # Получаем флаг без значения
+      base="${arg%%=*}"
       match=false
+
       for valid in "${VALID_FLAGS[@]}"; do
-        echo "   ↪ Comparing to valid flag: '$valid'"
+        echo -e "   ↪ Comparing against: '${YELLOW}$valid${RESET}'"
         if [[ "$valid" == "$arg" || "$valid" == "$base" || "$valid" == "$base=" ]]; then
           match=true
           break
@@ -49,6 +51,7 @@ validate_flags() {
         echo -e "${YELLOW}➡️  Tip: run 'create-repo --help' to see available options${RESET}"
         exit 1
       fi
+
     elif [[ "$arg" == -* ]]; then
       echo -e "${RED}❌ Unknown short flag: ${BOLD}$arg${RESET}"
       suggest_flag "$arg"
