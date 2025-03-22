@@ -18,7 +18,7 @@ export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
 export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 
 # === Load modules ===
-for file in colors flags version update help config platform repo logger doctor; do
+for file in colors flags version update help config platform repo logger doctor utils; do
   full="$SCRIPT_DIR/modules/$file.sh"
   if [[ ! -f "$full" ]]; then
     echo "❌ Module not found: $full"
