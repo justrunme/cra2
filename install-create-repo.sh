@@ -23,7 +23,23 @@ curl -fsSL "$RAW_URL/install-create-repo.sh" -o "$INSTALL_ROOT/install-create-re
 chmod +x "$INSTALL_ROOT/create-repo" "$INSTALL_ROOT/update-all" "$INSTALL_ROOT/install-create-repo.sh"
 
 # ⬇️ Download all modules
-modules=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh)
+modules=( 
+  colors.sh
+  config.sh
+  cron.sh
+  doctor.sh
+  flags.sh
+  git.sh
+  help.sh
+  logger.sh
+  platform.sh
+  repo.sh
+  status.sh
+  update.sh
+  utils.sh
+  version.sh
+)
+
 for mod in "${modules[@]}"; do
   echo "⬇️  Downloading module: $mod"
   curl -fsSL "$RAW_URL/modules/$mod" -o "$INSTALL_ROOT/modules/$mod"
