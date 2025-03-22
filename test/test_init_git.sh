@@ -9,6 +9,9 @@ TMP_DIR=$(mktemp -d)
 cd "$TMP_DIR"
 echo "📁 TMP_DIR: $TMP_DIR"
 
+# Очистка предыдущих следов
+rm -f "$HOME/.repo-autosync.list" "$HOME/.create-repo.log"
+
 # Минимальные настройки git
 git config --global user.email "ci@local.test"
 git config --global user.name "CI Bot"
