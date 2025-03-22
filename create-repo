@@ -16,7 +16,6 @@ source "$SCRIPT_DIR/modules/repo.sh"
 source "$SCRIPT_DIR/modules/logger.sh"
 source "$SCRIPT_DIR/modules/doctor.sh"
 
-# 🏁 Основная функция
 main() {
   validate_flags "$@"
 
@@ -36,24 +35,19 @@ main() {
       --status) print_status_all; exit 0 ;;
       --log)
         if [[ "$2" == "--errors" ]]; then
-          tail -n 10 "$HOME/.create-repo-errors.log"
-          exit 0
+          tail -n 10 "$HOME/.create-repo-errors.log"; exit 0
         fi
-        tail -n 10 "$HOME/.create-repo.log"
-        exit 0
+        tail -n 10 "$HOME/.create-repo.log"; exit 0
         ;;
       --list) print_repo_list; exit 0 ;;
       --remove)
         if [[ "$2" == "--force" ]]; then
-          remove_repo_force "$(pwd)"
-          exit 0
-        fi
-        ;;
+          remove_repo_force "$(pwd)"; exit 0
+        fi ;;
       --pull-only) perform_pull_only; exit 0 ;;
       --dry-run)
         export NO_PUSH=true
-        dry_run=true
-        ;;
+        dry_run=true ;;
       --sync-now) sync_now; exit 0 ;;
       --doctor) doctor_check; exit 0 ;;
       *) [[ -z "$repo" ]] && repo=$1 ;;
@@ -65,21 +59,16 @@ main() {
   CURRENT_FOLDER=$(realpath "$PWD")
   load_config
 
-  # Отладка
   echo "DEBUG: dry_run=$dry_run"
-  echo "DEBUG: platform_flag=$platform_flag"
-
   platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")
-  platform=${platform:-unknown}  # fallback
-
-  echo "DEBUG: detected platform=$platform"
+  [[ -z "$platform" ]] && platform="unknown"
+  echo "DEBUG: platform=$platform"
 
   if [[ "$platform" == "unknown" ]]; then
     if [[ "$dry_run" == "true" ]]; then
       echo -e "${YELLOW}⚠️ Platform is unknown, continuing due to dry-run.${RESET}"
     else
-      echo -e "${RED}❌ No Git platform detected.${RESET}"
-      exit 1
+      echo -e "${RED}❌ No Git platform detected.${RESET}"; exit 1
     fi
   fi
 
@@ -89,7 +78,6 @@ main() {
 
   generate_readme
   generate_gitignore
-
   git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
   show_final_message "$repo" "$branch" "$PWD" "$REPO_LIST" "$platform"
 
