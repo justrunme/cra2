@@ -42,18 +42,32 @@ remove_repo_force() {
 }
 
 generate_readme() {
-  [[ ! -f README.md ]] && echo "# $(basename "$PWD")" > README.md
+  if [[ ! -f README.md ]]; then
+    echo "ℹ️ Generating README.md..."
+    echo "# $(basename "$PWD")" > README.md || {
+      echo "❌ Failed to create README.md"
+      return 1
+    }
+  else
+    echo "ℹ️ README.md already exists."
+  fi
 }
 
 generate_gitignore() {
-  [[ -f .gitignore ]] && return
-  echo -e "*.log\nnode_modules/\n.env\ndist/\n__pycache__/" > .gitignore
+  if [[ ! -f .gitignore ]]; then
+    echo "ℹ️ Generating .gitignore..."
+    echo -e "*.log\nnode_modules/\n.env\ndist/\n__pycache__/" > .gitignore || {
+      echo "❌ Failed to create .gitignore"
+      return 1
+    }
+  else
+    echo "ℹ️ .gitignore already exists."
+  fi
 }
 
 sync_now() {
   local repo_path
   repo_path="$(pwd)"
-
   echo "🔄 Syncing $repo_path"
 
   if ! git -C "$repo_path" rev-parse --is-inside-work-tree &>/dev/null; then
@@ -97,9 +111,7 @@ git_init_repo() {
   local log_file="$6"
   local repo_list="$HOME/.repo-autosync.list"
 
-  echo "🛠️ Initializing Git repository..."
-
-  # Ensure .git exists
+  # Инициализация git, если нужно
   if [ ! -d ".git" ]; then
     git init -b "$branch"
   fi
@@ -107,22 +119,21 @@ git_init_repo() {
   git add .
   git commit -m "Initial commit - $timestamp" >/dev/null 2>&1 || true
 
-  # Add origin if not exists
+  # Добавляем origin, если не существует
   if ! git remote | grep -q origin; then
     remote_url=$(get_remote_url "$repo_name" "$platform")
     git remote add origin "$remote_url"
   fi
 
-  # Create list file if not exists
+  # Создаём файл списка, если его нет
   [[ ! -f "$repo_list" ]] && touch "$repo_list"
 
-  # Add path to autosync list if not present
+  # Добавляем текущий путь, если не был добавлен
   if ! grep -Fxq "$PWD" "$repo_list"; then
     echo "$PWD" >> "$repo_list"
-    echo "✅ Repo added to autosync list: $PWD"
   fi
 
-  # Handle push logic
+  # Пушим, если не отключено переменной
   if [[ "$NO_PUSH" == "true" ]]; then
     if [[ "$dry_run" == "true" ]]; then
       echo "🚫 Dry-run mode: git push skipped"
@@ -134,8 +145,4 @@ git_init_repo() {
   fi
 
   log_info "Repo '$repo_name' initialized on '$platform' at $PWD" "$log_file"
-
-  if [[ "$dry_run" == "true" ]]; then
-    echo "✅ Dry-run completed successfully, repo was registered."
-  fi
 }
