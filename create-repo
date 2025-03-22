@@ -64,7 +64,7 @@ main() {
     shift
   done
 
-  export dry_run=${dry_run:-false}
+  export dry_run="${dry_run:-false}"
   CURRENT_FOLDER=$(realpath "$PWD")
   echo "🧭 Current folder: $CURRENT_FOLDER"
 
@@ -82,9 +82,9 @@ main() {
     exit 1
   fi
 
-  repo=${repo:-$(basename "$PWD")}
-  branch=${default_branch:-main}
-  visibility=${default_visibility:-public}
+  repo="${repo:-$(basename "$PWD")}"
+  branch="${default_branch:-main}"
+  visibility="${default_visibility:-public}"
   echo "📌 Repo: $repo"
   echo "📌 Branch: $branch"
   echo "📌 Visibility: $visibility"
@@ -97,7 +97,11 @@ main() {
 
   show_final_message "$repo" "$branch" "$PWD" "$REPO_LIST" "$platform"
 
-  [[ "$dry_run" == "true" ]] && echo -e "${YELLOW}This was a dry-run. No git push was executed.${RESET}"
+  if [[ "$dry_run" == "true" ]]; then
+    echo -e "${YELLOW}This was a dry-run. No git push was executed.${RESET}"
+  fi
+
+  exit 0
 }
 
 main "$@"
