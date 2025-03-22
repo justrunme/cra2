@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -x
 
 echo "🔁 Running all tests..."
 
@@ -7,6 +8,7 @@ cd "$(dirname "$0")"
 
 # Абсолютный путь до бинарника
 export CREATE_REPO_BIN="$(cd .. && pwd)/create-repo"
+echo "🧪 Using create-repo binary: $CREATE_REPO_BIN"
 
 # Проверка наличия бинарника
 if [ ! -x "$CREATE_REPO_BIN" ]; then
@@ -18,13 +20,13 @@ fi
 git config --global user.name "CI Bot"
 git config --global user.email "ci@local.test"
 
-# Удалим предыдущий конфиг для чистоты
+# Удалим предыдущие конфиги
 rm -f ~/.create-repo.conf ~/.create-repo.local.conf
 
 # Сделаем все тесты исполняемыми
 chmod +x test_*.sh
 
-# Запуск каждого теста, кроме отключённых
+# Запуск тестов
 for test in test_*.sh; do
   case "$test" in
     test_config_files.sh|test_init_git.sh)
@@ -33,7 +35,10 @@ for test in test_*.sh; do
       ;;
   esac
   echo "▶️  Running $test"
-  bash "$test"
+  if ! bash "$test"; then
+    echo "❌ Test failed: $test"
+    exit 1
+  fi
 done
 
 echo "✅ All tests passed."
