@@ -11,12 +11,11 @@ REPO_LIST="$HOME/.repo-autosync.list"
 # Удалим старые файлы, если были
 rm -f "$CONFIG" "$REPO_LIST"
 
-# Явный вызов без интерактива
+# Принудительно создадим конфиг и список без push и sync
 "$BIN" my-test-repo \
   --platform=GitHub \
   --disable-sync \
-  --no-push \
-  --dry-run
+  --no-push
 
 # Проверяем, созданы ли файлы
 if [ ! -f "$CONFIG" ]; then
