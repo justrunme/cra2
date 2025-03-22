@@ -23,7 +23,9 @@ git commit -m "init" &>/dev/null
 
 # Запускаем create-repo без --disable-sync
 echo "▶️ Running create-repo to enable auto-sync..."
-"$BIN" --platform=github
+
+# Логируем вывод команды для диагностики
+"$BIN" --platform=github || { echo "❌ Failed to run create-repo"; exit 1; }
 
 # Проверяем .repo-autosync.list
 echo "📂 Checking if repo was added to .repo-autosync.list..."
