@@ -74,7 +74,7 @@ jobs:
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/modules/version.sh
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
 
-          cat > pkg/DEBIAN/control <<EOF
+          cat <<EOF > pkg/DEBIAN/control
 Package: create-repo
 Version: ${VERSION#v}
 Section: utils
@@ -84,7 +84,7 @@ Maintainer: you@example.com
 Description: Git auto-sync CLI with modular structure
 EOF
 
-          cat > pkg/DEBIAN/postinst <<EOF
+          cat <<EOF > pkg/DEBIAN/postinst
 #!/bin/bash
 echo ✅ Installed create-repo ${VERSION#v}
 EOF
