@@ -56,11 +56,12 @@ while IFS= read -r repo_path || [[ -n "$repo_path" ]]; do
 
   cd "$repo_path" || continue
   PROJECT_NAME=$(basename "$repo_path")
-  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 
   # === Load local config ===
   LOCAL_CONF="$repo_path/.create-repo.local.conf"
   if [ -f "$LOCAL_CONF" ]; then
+    echo "ℹ️ Loading local config: $LOCAL_CONF"
     source "$LOCAL_CONF"
     if [ "$disable_sync" = "true" ]; then
       echo -e "🚫 ${YELLOW}$PROJECT_NAME skipped (disabled via local config)${RESET}"
