@@ -65,12 +65,21 @@ levenshtein() {
   declare -A d
   local i j
 
-  for ((i = 0; i <= slen; i++)); do d[$i,0]=$i; done
-  for ((j = 0; j <= tlen; j++)); do d[0,$j]=$j; done
+  for (( i = 0; i <= slen; i++ )); do
+    d[$i,0]=$i
+  done
+  for (( j = 0; j <= tlen; j++ )); do
+    d[0,$j]=$j
+  done
 
-  for ((i = 1; i <= slen; i++)); do
-    for ((j = 1; j <= tlen; j++)); do
-      local cost=$(( s[i-1] != t[j-1] ? 1 : 0 ))
+  for (( i = 1; i <= slen; i++ )); do
+    for (( j = 1; j <= tlen; j++ )); do
+      local char1="${s:i-1:1}"
+      local char2="${t:j-1:1}"
+      local cost=0
+      if [[ "$char1" != "$char2" ]]; then
+        cost=1
+      fi
       local del=$(( d[i-1,j] + 1 ))
       local ins=$(( d[i,j-1] + 1 ))
       local sub=$(( d[i-1,j-1] + cost ))
@@ -85,7 +94,9 @@ levenshtein() {
 min() {
   local min_val=$1
   for val in "$@"; do
-    (( val < min_val )) && min_val=$val
+    if (( val < min_val )); then
+      min_val=$val
+    fi
   done
   echo "$min_val"
 }
