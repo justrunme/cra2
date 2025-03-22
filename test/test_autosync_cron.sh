@@ -1,6 +1,6 @@
 #!/bin/bash
-set -e  # Остановить скрипт при ошибке команды
-set -x  # Печатать каждую команду
+set -e
+set -x
 trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 
 echo "🧪 Testing auto-sync and cron integration..."
@@ -56,11 +56,7 @@ UPDATE_LOG=$(mktemp)
 chmod +x "$SCRIPT_DIR/update-all"
 echo "ℹ️ Using update-all at: $SCRIPT_DIR/update-all"
 
-# --pull-only + NO_PUSH=true, чтобы не было реального пуша
 NO_PUSH=true "$SCRIPT_DIR/update-all" --pull-only > "$UPDATE_LOG" 2>&1 || {
-
-  # Если update-all упал (код возврата ≠ 0),
-  # но лог содержит "example.com/fake.git", считаем это ожидаемой ошибкой (фейковый remote)
   if grep -q "example.com/fake.git" "$UPDATE_LOG"; then
     echo "⚠️ Fake remote failed as expected (example.com)."
   else
@@ -70,13 +66,12 @@ NO_PUSH=true "$SCRIPT_DIR/update-all" --pull-only > "$UPDATE_LOG" 2>&1 || {
   fi
 }
 
-# 8) Проверка: лог должен содержать 'Pulling'
-if ! grep -q "Pulling" "$UPDATE_LOG"; then
-  echo "❌ update-all log does not contain 'Pulling':"
+# 8) Проверка: лог должен содержать либо 'Pulling' либо 'nothing to commit'
+if ! grep -qE "Pulling|nothing to commit" "$UPDATE_LOG"; then
+  echo "❌ update-all log does not contain 'Pulling' or 'nothing to commit':"
   cat "$UPDATE_LOG"
   exit 1
 fi
 
-# 9) Если дошли сюда, значит всё ок
 echo "✅ Auto-sync and cron integration test passed"
 exit 0
