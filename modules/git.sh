@@ -1,45 +1,49 @@
 #!/bin/bash
 # git.sh — Git-related utilities for create-repo
 
-# Show basic info about the current git repository
+# Print current git repository info (debug)
 print_git_info() {
+  echo "📘 Git Info Debug:"
+  echo "🔍 PWD: $(pwd)"
   if [ ! -d ".git" ]; then
-    echo "🚫 This directory is not a Git repository."
+    echo "🚫 Not a Git repository."
     return 1
   fi
 
-  echo "📘 Git Repository Info:"
-  echo "🔀 Current branch:   $(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
-  echo "🌐 Remote origin:    $(git remote get-url origin 2>/dev/null)"
-  echo "🔄 Status summary:"
-  git status -s || echo "⚠️ git status failed"
+  echo "🔀 Branch:     $(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  echo "🌐 Remote URL: $(git remote get-url origin 2>/dev/null || echo 'none')"
+  echo "🔄 Status:"
+  git status || echo "⚠️ git status failed"
+  echo "🧼 Clean: $(has_uncommitted_changes && echo 'No' || echo 'Yes')"
 }
 
-# Return the current git branch (fallback to main)
+# Return current branch name or fallback to "main"
 get_current_branch() {
-  git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main"
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+  echo "$branch"
 }
 
-# Return true if repository has uncommitted changes
+# Detect uncommitted changes
 has_uncommitted_changes() {
-  if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-    return 0  # yes
-  else
-    return 1  # clean
-  fi
+  [[ -n "$(git status --porcelain 2>/dev/null)" ]]
 }
 
-# Return true if current folder is a Git repository
+# Check if inside a Git repository
 is_git_repo() {
   git rev-parse --is-inside-work-tree &>/dev/null
 }
 
-# Try to initialize git repo if not already a repo
+# Try to initialize a git repo if none exists
 try_git_init() {
   if ! is_git_repo; then
-    echo "📦 Initializing new Git repository..."
-    git init
-    git add .
-    git commit -m "Initial commit"
+    echo "📦 Initializing Git repository..."
+    git init -b main || { echo "❌ git init failed"; return 1; }
+    git config user.name "CI User"
+    git config user.email "ci@example.com"
+    git add . || echo "⚠️ git add failed"
+    git commit -m "Initial commit" || echo "⚠️ git commit failed (maybe nothing to commit)"
+  else
+    echo "✅ Already a Git repository."
   fi
 }
