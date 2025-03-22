@@ -4,10 +4,10 @@
 source "$SCRIPT_DIR/modules/utils.sh"
 
 validate_flags() {
-  local VALID_FLAGS=(
+  VALID_FLAGS=(
     --help
     --interactive
-    --platform
+    --platform=
     --platform-status
     --update
     --upgrade
@@ -30,25 +30,24 @@ validate_flags() {
 
   for arg in "$@"; do
     if [[ "$arg" == --* ]]; then
-      local base="${arg%%=*}"  # убираем =value, если есть
-      local match=false
-
+      base="${arg%%=*}"     # Получаем флаг без значения
+      match=false
       for valid in "${VALID_FLAGS[@]}"; do
-        if [[ "$valid" == "$base" || "$valid" == "$arg" ]]; then
+        # Разрешаем как точные флаги, так и начинающиеся на base=
+        if [[ "$valid" == "$arg" || "$valid" == "$base=" ]]; then
           match=true
           break
         fi
       done
 
       if ! $match; then
-        echo -e "${RED}❌ Unknown flag: ${BOLD}$arg${RESET}"
+        echo -e "${RED}❌ Unknown flag: $arg${RESET}"
         suggest_flag "$arg"
         echo -e "${YELLOW}➡️  Tip: run 'create-repo --help' to see available options${RESET}"
         exit 1
       fi
-
     elif [[ "$arg" == -* ]]; then
-      echo -e "${RED}❌ Unknown short flag: ${BOLD}$arg${RESET}"
+      echo -e "${RED}❌ Unknown short flag: $arg${RESET}"
       suggest_flag "$arg"
       echo -e "${YELLOW}➡️  Tip: use long flags like --version or --help${RESET}"
       exit 1
