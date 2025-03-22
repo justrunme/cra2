@@ -16,6 +16,9 @@ rm -f ~/.repo-autosync.list ~/.create-repo.log ~/.create-repo.conf
 # Создаем конфиг заранее, чтобы избежать интерактива
 echo "platform=github" > ~/.create-repo.conf
 
+# Создаем пустой файл автосинхронизации (fix for dry-run mode)
+touch ~/.repo-autosync.list
+
 # Создаем dummy git репозиторий
 git init -b main &>/dev/null
 echo "# Auto-sync test" > README.md
@@ -53,6 +56,8 @@ fi
 # Проверяем запись в .repo-autosync.list
 if ! grep -q "$TMP_DIR" ~/.repo-autosync.list; then
   echo "❌ Repo not found in ~/.repo-autosync.list"
+  echo "📝 Contents of ~/.repo-autosync.list:"
+  cat ~/.repo-autosync.list || echo "(empty)"
   exit 1
 fi
 echo "✅ Repo added to autosync list"
