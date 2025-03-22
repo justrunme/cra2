@@ -1,0 +1,34 @@
+#!/bin/bash
+set -e
+set -x
+
+echo "🧪 Testing Docker build & run for create-repo..."
+
+DOCKER_IMAGE="cra2-test:latest"
+
+# 1) Build Docker image
+docker build -t "$DOCKER_IMAGE" .
+
+# 2) Check create-repo --version inside container
+VERSION_OUTPUT=$(docker run --rm "$DOCKER_IMAGE" create-repo --version || true)
+
+echo "📋 Version output in Docker:"
+echo "$VERSION_OUTPUT"
+
+if [[ "$VERSION_OUTPUT" != *"version:"* ]]; then
+  echo "❌ create-repo --version did not output a version"
+  exit 1
+fi
+
+# 3) Check update-all --help
+HELP_OUTPUT=$(docker run --rm "$DOCKER_IMAGE" update-all --help || true)
+
+echo "📋 update-all --help in Docker:"
+echo "$HELP_OUTPUT"
+
+if [[ "$HELP_OUTPUT" != *"Usage: update-all [--pull-only] [--dry-run]"* ]]; then
+  echo "❌ update-all --help did not show expected usage"
+  exit 1
+fi
+
+echo "✅ Docker test passed"
