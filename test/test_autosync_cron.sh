@@ -21,6 +21,12 @@ git config user.email "test@example.com"
 git config user.name "Test User"
 git commit -m "init" &>/dev/null
 
+# Проверим, что файл create-repo существует и исполним
+if [ ! -x "$BIN" ]; then
+  echo "❌ File $BIN is not executable or not found"
+  exit 1
+fi
+
 # Запускаем create-repo без --disable-sync
 echo "▶️ Running create-repo to enable auto-sync..."
 
