@@ -6,22 +6,21 @@ trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 SCRIPT_VERSION="{{VERSION}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Обязательно экспортируем переменные
-export PLATFORM_MAP="$HOME/.create-repo.platforms"
-export LOG_FILE="$HOME/.create-repo.log"
-export REPO_LIST="$HOME/.repo-autosync.list"
+# ✅ Экспорт переменных (если вдруг unset)
+export PLATFORM_MAP="${PLATFORM_MAP:-$HOME/.create-repo.platforms}"
+export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
+export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 
-# 🔗 Подключение модулей
-source "$SCRIPT_DIR/modules/colors.sh"
-source "$SCRIPT_DIR/modules/flags.sh"
-source "$SCRIPT_DIR/modules/version.sh"
-source "$SCRIPT_DIR/modules/update.sh"
-source "$SCRIPT_DIR/modules/help.sh"
-source "$SCRIPT_DIR/modules/config.sh"
-source "$SCRIPT_DIR/modules/platform.sh"
-source "$SCRIPT_DIR/modules/repo.sh"
-source "$SCRIPT_DIR/modules/logger.sh"
-source "$SCRIPT_DIR/modules/doctor.sh"
+# ✅ Подключение модулей с проверкой
+for file in colors flags version update help config platform repo logger doctor; do
+  full="$SCRIPT_DIR/modules/$file.sh"
+  if [[ ! -f "$full" ]]; then
+    echo "❌ Module not found: $full"
+    exit 1
+  fi
+  echo "🔍 Loading module: $file.sh"
+  source "$full"
+done
 
 # 🏁 Основная функция
 main() {
