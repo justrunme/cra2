@@ -1,10 +1,17 @@
 #!/bin/bash
 set -e
+set -x
+trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 
 SCRIPT_VERSION="{{VERSION}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# 🔗 Модули
+# Обязательно экспортируем переменные
+export PLATFORM_MAP="$HOME/.create-repo.platforms"
+export LOG_FILE="$HOME/.create-repo.log"
+export REPO_LIST="$HOME/.repo-autosync.list"
+
+# 🔗 Подключение модулей
 source "$SCRIPT_DIR/modules/colors.sh"
 source "$SCRIPT_DIR/modules/flags.sh"
 source "$SCRIPT_DIR/modules/version.sh"
@@ -16,6 +23,7 @@ source "$SCRIPT_DIR/modules/repo.sh"
 source "$SCRIPT_DIR/modules/logger.sh"
 source "$SCRIPT_DIR/modules/doctor.sh"
 
+# 🏁 Основная функция
 main() {
   validate_flags "$@"
 
@@ -37,7 +45,7 @@ main() {
         if [[ "$2" == "--errors" ]]; then
           tail -n 10 "$HOME/.create-repo-errors.log"; exit 0
         fi
-        tail -n 10 "$HOME/.create-repo.log"; exit 0
+        tail -n 10 "$LOG_FILE"; exit 0
         ;;
       --list) print_repo_list; exit 0 ;;
       --remove)
@@ -60,9 +68,12 @@ main() {
   load_config
 
   echo "DEBUG: dry_run=$dry_run"
+  echo "DEBUG: platform_flag=$platform_flag"
+
   platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")
   [[ -z "$platform" ]] && platform="unknown"
-  echo "DEBUG: platform=$platform"
+
+  echo "DEBUG: detected platform=$platform"
 
   if [[ "$platform" == "unknown" ]]; then
     if [[ "$dry_run" == "true" ]]; then
