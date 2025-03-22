@@ -37,14 +37,22 @@ jobs:
       - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🔍 Debug + run tests
+      - name: 🔎 Debug file structure
+        run: |
+          echo "🗂️  Root:" && ls -la
+          echo "🗂️  test/:"
+          ls -la test || echo "⚠️ test/ not found"
+          echo "🗂️  modules/:"
+          ls -la modules || echo "⚠️ modules/ not found"
+
+      - name: 🧪 Run all tests from test/
         run: |
           set -x
-          echo "🌐 PWD: $(pwd)"
-          chmod +x create-repo
-          VERSION="${{ needs.autotag.outputs.version }}"
-          sed -i "s|{{VERSION}}|$VERSION|g" create-repo
-          chmod +x test/*.sh test/run-all-tests.sh
+          chmod +x create-repo || echo "⚠️ Cannot chmod create-repo"
+          chmod +x test/*.sh test/run-all-tests.sh || echo "⚠️ Cannot chmod test files"
+          echo "🐚 create-repo file:"
+          file create-repo || echo "⚠️ file command failed"
+          echo "🌐 Current dir: $(pwd)"
           export CREATE_REPO_BIN="$PWD/create-repo"
           bash test/run-all-tests.sh
 
@@ -71,7 +79,10 @@ jobs:
           cp create-repo update-all install-create-repo.sh pkg/usr/local/bin/
           cp modules/*.sh pkg/usr/local/bin/modules/
           chmod +x pkg/usr/local/bin/*
+
+          # Подстановка версии
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
+          sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/modules/version.sh
 
           echo "Package: create-repo" > pkg/DEBIAN/control
           echo "Version: ${VERSION#v}" >> pkg/DEBIAN/control
@@ -112,7 +123,10 @@ jobs:
           cp create-repo update-all install-create-repo.sh pkg-root/usr/local/bin/
           cp modules/*.sh pkg-root/usr/local/bin/modules/
           chmod +x pkg-root/usr/local/bin/*
+
+          # Подстановка версии
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
+          sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/modules/version.sh
 
           pkgbuild \
             --identifier com.justrunme.create-repo \
