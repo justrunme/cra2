@@ -71,19 +71,21 @@ jobs:
           cp create-repo update-all install-create-repo.sh pkg/usr/local/bin/
           cp modules/*.sh pkg/usr/local/bin/modules/
           chmod +x pkg/usr/local/bin/*
+
+          # 🔁 Подстановка версии
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/modules/version.sh
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
 
-          cat <<EOF > pkg/DEBIAN/control
-Package: create-repo
-Version: ${VERSION#v}
-Section: utils
-Priority: optional
-Architecture: all
-Maintainer: you@example.com
-Description: Git auto-sync CLI with modular structure
-EOF
+          # Создание control-файла
+          echo "Package: create-repo" > pkg/DEBIAN/control
+          echo "Version: ${VERSION#v}" >> pkg/DEBIAN/control
+          echo "Section: utils" >> pkg/DEBIAN/control
+          echo "Priority: optional" >> pkg/DEBIAN/control
+          echo "Architecture: all" >> pkg/DEBIAN/control
+          echo "Maintainer: you@example.com" >> pkg/DEBIAN/control
+          echo "Description: Git auto-sync CLI with modular structure" >> pkg/DEBIAN/control
 
+          # Создание postinst
           echo '#!/bin/bash' > pkg/DEBIAN/postinst
           echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
           chmod +x pkg/DEBIAN/postinst
@@ -115,6 +117,7 @@ EOF
           cp create-repo update-all install-create-repo.sh pkg-root/usr/local/bin/
           cp modules/*.sh pkg-root/usr/local/bin/modules/
           chmod +x pkg-root/usr/local/bin/*
+
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/modules/version.sh
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
 
