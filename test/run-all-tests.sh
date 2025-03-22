@@ -14,6 +14,10 @@ if [ ! -x "$CREATE_REPO_BIN" ]; then
   exit 1
 fi
 
+# Настройка git user для тестов (исправление ошибки commit)
+git config --global user.name "CI Bot"
+git config --global user.email "ci@local.test"
+
 # Удалим предыдущий конфиг для чистоты
 rm -f ~/.create-repo.conf ~/.create-repo.local.conf
 
