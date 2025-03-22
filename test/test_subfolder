@@ -1,0 +1,43 @@
+#!/bin/bash
+set -e
+set -x
+
+echo "🧪 Testing subfolder .git corner case..."
+
+BIN="${CREATE_REPO_BIN:-./create-repo}"
+TMP_DIR=$(mktemp -d)
+cd "$TMP_DIR"
+echo "📁 TMP_DIR: $TMP_DIR"
+
+mkdir subfolder
+cd subfolder
+git init -b main &>/dev/null
+git config user.email "ci@example.com"
+git config user.name "CI User"
+echo "# Subfolder .git test" > README.md
+git add README.md
+git commit -m "init" &>/dev/null
+git remote add origin https://example.com/fake.git
+cd ..
+
+# Запускаем create-repo в корне
+"$BIN" --dry-run --platform=github || {
+  echo "❌ create-repo failed"
+  exit 1
+}
+
+# Проверим, действительно ли .git не в PWD, а в subfolder
+if [ ! -d "$TMP_DIR/subfolder/.git" ]; then
+  echo "❌ .git not found in subfolder"
+  exit 1
+fi
+
+# Логика того, должно ли create-repo решить, что это "Not a Git repo"
+# или считать subfolder за repo.
+# Зависит от вашего поведения. Возможно, вы ожидаете ошибку?
+if grep -q "$TMP_DIR" ~/.repo-autosync.list; then
+  echo "❌ Path was tracked, but .git is in subfolder"
+  exit 1
+fi
+
+echo "✅ Subfolder .git test passed (repo not tracked)"
