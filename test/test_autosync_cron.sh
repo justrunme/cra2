@@ -23,10 +23,17 @@ git commit -m "init" &>/dev/null
 
 # Проверим, что файл create-repo существует и исполним
 echo "📂 Checking if create-repo is executable..."
+
 if [ ! -x "$BIN" ]; then
   echo "❌ File $BIN is not executable or not found"
   exit 1
+else
+  echo "✅ File $BIN is executable"
 fi
+
+# Проверим, что бинарник доступен
+echo "📂 Verifying file path:"
+ls -la "$BIN"
 
 # Логируем вывод команды для диагностики
 echo "▶️ Running create-repo to enable auto-sync..."
