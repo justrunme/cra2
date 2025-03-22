@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 set -x
-trap 'echo "❌ FAILED at line $LINENO with exit code $?" >&2; exit 1' ERR
+trap 'code=$?; echo "❌ FAILED at line $LINENO with exit code $code" >&2; exit $code' ERR
 
 echo "🧪 Testing auto-sync and cron integration..."
 
@@ -57,7 +57,6 @@ UPDATE_LOG=$(mktemp)
 chmod +x "$SCRIPT_DIR/update-all"
 echo "ℹ️ Using update-all at: $SCRIPT_DIR/update-all"
 
-# Разрешаем fail для fake remote
 NO_PUSH=true "$SCRIPT_DIR/update-all" --pull-only > "$UPDATE_LOG" 2>&1 || {
   if grep -q "example.com/fake.git" "$UPDATE_LOG"; then
     echo "⚠️ Fake remote failed as expected (example.com)."
