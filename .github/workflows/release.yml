@@ -37,11 +37,35 @@ jobs:
       - name: 📦 Checkout repository
         uses: actions/checkout@v4
 
+      - name: 🔎 Debug file structure
+        run: |
+          echo "🗂️  Root:"
+          ls -la
+          echo "🗂️  test/:"
+          ls -la test || echo "⚠️ test/ not found"
+          echo "🗂️  modules/:"
+          ls -la modules || echo "⚠️ modules/ not found"
+
       - name: 🧪 Run all tests from test/
         run: |
-          chmod +x create-repo
-          chmod +x test/*.sh test/run-all-tests.sh
+          set -x  # <--- ВКЛЮЧАЕМ трассировку
+          chmod +x create-repo || echo "⚠️ Cannot chmod create-repo"
+          chmod +x test/*.sh test/run-all-tests.sh || echo "⚠️ Cannot chmod test files"
+
+          echo "🐚 create-repo file:"
+          file create-repo || echo "⚠️ file command failed"
+
+          echo "🔍 Executable check:"
+          if [ ! -x create-repo ]; then
+            echo "❌ create-repo is not executable"
+            exit 1
+          fi
+
+          echo "🌐 Current dir: $(pwd)"
+          echo "📌 CREATE_REPO_BIN: $PWD/create-repo"
           export CREATE_REPO_BIN="$PWD/create-repo"
+
+          echo "🚀 Run test runner script:"
           bash test/run-all-tests.sh
 
   build-deb:
@@ -52,10 +76,7 @@ jobs:
 
       - name: ✅ Verify required modules (Linux)
         run: |
-          REQUIRED_MODULES=(
-            colors.sh flags.sh version.sh update.sh help.sh config.sh
-            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
-          )
+          REQUIRED_MODULES=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh)
           for mod in "${REQUIRED_MODULES[@]}"; do
             if [ ! -f "modules/$mod" ]; then
               echo "❌ Missing module: $mod"
@@ -72,13 +93,15 @@ jobs:
           chmod +x pkg/usr/local/bin/*
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
 
-          echo "Package: create-repo" > pkg/DEBIAN/control
-          echo "Version: ${VERSION#v}" >> pkg/DEBIAN/control
-          echo "Section: utils" >> pkg/DEBIAN/control
-          echo "Priority: optional" >> pkg/DEBIAN/control
-          echo "Architecture: all" >> pkg/DEBIAN/control
-          echo "Maintainer: you@example.com" >> pkg/DEBIAN/control
-          echo "Description: Git auto-sync CLI with modular structure" >> pkg/DEBIAN/control
+          cat <<EOF > pkg/DEBIAN/control
+Package: create-repo
+Version: ${VERSION#v}
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: you@example.com
+Description: Git auto-sync CLI with modular structure
+EOF
 
           echo "#!/bin/bash" > pkg/DEBIAN/postinst
           echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
@@ -96,10 +119,7 @@ jobs:
 
       - name: ✅ Verify required modules (macOS)
         run: |
-          REQUIRED_MODULES=(
-            colors.sh flags.sh version.sh update.sh help.sh config.sh
-            platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh
-          )
+          REQUIRED_MODULES=(colors.sh flags.sh version.sh update.sh help.sh config.sh platform.sh repo.sh logger.sh utils.sh cron.sh git.sh status.sh)
           for mod in "${REQUIRED_MODULES[@]}"; do
             if [ ! -f "modules/$mod" ]; then
               echo "❌ Missing module: $mod"
@@ -150,4 +170,3 @@ jobs:
             create-repo_*.pkg
             install-create-repo.sh
             checksums.txt
-
