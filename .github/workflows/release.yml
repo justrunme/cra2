@@ -71,7 +71,6 @@ jobs:
           cp create-repo update-all install-create-repo.sh pkg/usr/local/bin/
           cp modules/*.sh pkg/usr/local/bin/modules/
           chmod +x pkg/usr/local/bin/*
-
           # 🔁 Подстановка версии
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/modules/version.sh
           sed -i "s|{{VERSION}}|$VERSION|g" pkg/usr/local/bin/create-repo
@@ -86,10 +85,12 @@ Maintainer: you@example.com
 Description: Git auto-sync CLI with modular structure
 EOF
 
-          echo "#!/bin/bash" > pkg/DEBIAN/postinst
-          echo "echo ✅ Installed create-repo ${VERSION#v}" >> pkg/DEBIAN/postinst
-          chmod +x pkg/DEBIAN/postinst
+          cat <<EOF > pkg/DEBIAN/postinst
+#!/bin/bash
+echo ✅ Installed create-repo ${VERSION#v}
+EOF
 
+          chmod +x pkg/DEBIAN/postinst
           dpkg-deb --build pkg
           mv pkg.deb create-repo_${VERSION#v}.deb
           sha256sum create-repo_*.deb > checksums.txt
@@ -117,7 +118,6 @@ EOF
           cp create-repo update-all install-create-repo.sh pkg-root/usr/local/bin/
           cp modules/*.sh pkg-root/usr/local/bin/modules/
           chmod +x pkg-root/usr/local/bin/*
-
           # 🔁 Подстановка версии
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/modules/version.sh
           sed -i '' "s|{{VERSION}}|$VERSION|g" pkg-root/usr/local/bin/create-repo
