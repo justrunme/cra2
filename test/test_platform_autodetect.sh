@@ -32,7 +32,7 @@ fi
 echo "✅ GitHub auto-detect works"
 
 # Очистим
-sed -i "/$TMP_DIR/d" ~/.repo-autosync.list
+sed -i "\|$TMP_DIR|d" ~/.repo-autosync.list
 rm -f ~/.create-repo.platforms
 
 # === Case B: GitLab
@@ -51,7 +51,7 @@ fi
 echo "✅ GitLab auto-detect works"
 
 # Очистим
-sed -i "/$TMP_DIR/d" ~/.repo-autosync.list
+sed -i "\|$TMP_DIR|d" ~/.repo-autosync.list
 rm -f ~/.create-repo.platforms
 
 # === Case C: Bitbucket
