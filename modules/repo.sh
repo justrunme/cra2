@@ -1,4 +1,5 @@
 #!/bin/bash
+# repo.sh — main repository-related functions for create-repo
 
 print_repo_list() {
   local list_file="$HOME/.repo-autosync.list"
@@ -19,7 +20,8 @@ print_repo_list() {
 }
 
 detect_platform_from_config() {
-  local remote=$(git -C "$1" remote get-url origin 2>/dev/null)
+  local remote
+  remote=$(git -C "$1" remote get-url origin 2>/dev/null)
   [[ "$remote" == *github.com* ]] && echo "GitHub" && return
   [[ "$remote" == *gitlab.com* ]] && echo "GitLab" && return
   [[ "$remote" == *bitbucket.org* ]] && echo "Bitbucket" && return
@@ -61,36 +63,92 @@ EOF
   fi
 }
 
+#
+# sync_now():
+# - optionally run .create-repo.pre-sync.sh
+# - auto_rebase if set
+# - commit changes if any
+# - push unless NO_PUSH=true
+# - optionally run .create-repo.post-sync.sh
+#
 sync_now() {
   local repo_path
   repo_path="$(pwd)"
 
   echo "🔄 Syncing $repo_path"
 
+  # 1) Проверка, что это git
   if ! git -C "$repo_path" rev-parse --is-inside-work-tree &>/dev/null; then
     echo "❌ Not a git repository."
     return 1
   fi
 
-  git -C "$repo_path" pull --rebase || echo "⚠️ Pull failed."
-  git -C "$repo_path" add .
-  git -C "$repo_path" commit -m "Auto-sync $(date '+%F %T')" 2>/dev/null
+  # 2) pre-sync hook
+  if [ -f ./.create-repo.pre-sync.sh ]; then
+    echo "🔧 Running pre-sync hook..."
+    if ! bash ./.create-repo.pre-sync.sh; then
+      echo "❌ pre-sync hook failed. Aborting sync."
+      return 1
+    fi
+  fi
 
+  # 3) auto_rebase logic (если user хочет перебазирование)
+  #    предполагаем, что load_config уже сделан (глобально)
+  #    и у нас есть переменная auto_rebase
+  if [[ "$auto_rebase" == "true" ]]; then
+    echo "⬇️  git pull --rebase"
+    if ! git -C "$repo_path" pull --rebase; then
+      echo "⚠️ Pull/rebase failed or conflict"
+      # можно return 1
+    fi
+  else
+    echo "⬇️  git pull"
+    if ! git -C "$repo_path" pull; then
+      echo "⚠️ Pull failed."
+      # можно return 1
+    fi
+  fi
+
+  # 4) commit
+  git -C "$repo_path" add .
+  if ! git -C "$repo_path" commit -m "Auto-sync $(date '+%F %T')" 2>/dev/null; then
+    echo "nothing to commit, working tree clean"
+    # не считаем это ошибкой
+  fi
+
+  # 5) push
   if [[ "$NO_PUSH" == "true" ]]; then
     echo "⚠️ Skipping git push due to NO_PUSH=true"
   else
-    git -C "$repo_path" push || echo "Nothing to commit or push failed."
+    echo "⬆️  git push"
+    # не выходим с кодом 1, если пуш упал, просто сообщаем
+    if ! git -C "$repo_path" push; then
+      echo "⚠️ Push failed (no changes or remote error?)"
+    fi
   fi
+
+  # 6) post-sync hook
+  if [ -f ./.create-repo.post-sync.sh ]; then
+    echo "🔧 Running post-sync hook..."
+    if ! bash ./.create-repo.post-sync.sh; then
+      echo "⚠️ post-sync hook failed (continuing anyway)"
+      # не падаем
+    fi
+  fi
+
+  return 0
 }
 
 perform_pull_only() {
-  local branch=$(git -C "$(pwd)" symbolic-ref --short HEAD 2>/dev/null || echo "main")
+  local branch
+  branch=$(git -C "$(pwd)" symbolic-ref --short HEAD 2>/dev/null || echo "main")
   echo -e "🔄 Pulling latest changes from $branch..."
   git -C "$(pwd)" pull origin "$branch"
 }
 
 perform_dry_run() {
-  local branch=$(git -C "$(pwd)" symbolic-ref --short HEAD 2>/dev/null || echo "main")
+  local branch
+  branch=$(git -C "$(pwd)" symbolic-ref --short HEAD 2>/dev/null || echo "main")
   echo -e "🚀 Dry-run: git push origin $branch"
   echo "⚠️ Skipping git push (dry-run)"
 }
