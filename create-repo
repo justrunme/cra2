@@ -3,40 +3,94 @@ set -e
 set -x
 trap 'echo "❌ FAILED at line $LINENO with exit code $?"' ERR
 
-echo "STEP 0: Start create-repo"
-
 SCRIPT_VERSION="{{VERSION}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "STEP 1: SCRIPT_DIR = $SCRIPT_DIR"
 
-# Установка переменных окружения
+# 🌍 Экспорт путей
 export PLATFORM_MAP="${PLATFORM_MAP:-$HOME/.create-repo.platforms}"
 export LOG_FILE="${LOG_FILE:-$HOME/.create-repo.log}"
 export REPO_LIST="${REPO_LIST:-$HOME/.repo-autosync.list}"
 
-echo "STEP 2: PLATFORM_MAP = $PLATFORM_MAP"
-echo "STEP 3: LOG_FILE = $LOG_FILE"
-echo "STEP 4: REPO_LIST = $REPO_LIST"
-
-# Подключаем модули
-for file in colors flags version update help config platform repo logger doctor; do
+# 🔗 Загрузка модулей
+for file in colors flags version update help config platform repo logger doctor git; do
   full="$SCRIPT_DIR/modules/$file.sh"
-  echo "STEP 5: Trying to load $full"
-  if [[ ! -f "$full" ]]; then
-    echo "❌ Missing module: $full"
-    exit 1
-  fi
+  [[ ! -f "$full" ]] && echo "❌ Missing module: $file.sh" && exit 1
+  echo "🔍 Loading $file.sh"
   source "$full"
-  echo "STEP 6: Loaded $file.sh"
 done
 
-echo "STEP 7: All modules loaded. Now calling main()"
-
+# 🏁 Основная логика
 main() {
-  echo "STEP 8: Inside main()"
-  echo "Arguments: $@"
-  echo "Exiting with success just for test"
-  exit 0
+  echo "🚀 Starting create-repo"
+  validate_flags "$@"
+
+  repo=""
+  platform_flag=""
+  interactive=false
+  dry_run=false
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --help|-h) show_help; exit 0 ;;
+      --version) show_version; exit 0 ;;
+      --update) check_for_update; exit 0 ;;
+      --interactive) interactive=true ;;
+      --platform=*) platform_flag="${1#*=}" ;;
+      --platform-status) show_platform_bindings; exit 0 ;;
+      --status) print_status_all; exit 0 ;;
+      --log)
+        [[ "$2" == "--errors" ]] && tail -n 20 "$HOME/.create-repo-errors.log" && exit 0
+        tail -n 20 "$LOG_FILE" && exit 0
+        ;;
+      --list) print_repo_list; exit 0 ;;
+      --remove)
+        [[ "$2" == "--force" ]] && remove_repo_force "$(pwd)" && exit 0 ;;
+      --pull-only) perform_pull_only; exit 0 ;;
+      --dry-run)
+        export NO_PUSH=true
+        dry_run=true ;;
+      --sync-now) sync_now; exit 0 ;;
+      --doctor) doctor_check; exit 0 ;;
+      *) [[ -z "$repo" ]] && repo="$1" ;;
+    esac
+    shift
+  done
+
+  export dry_run=${dry_run:-false}
+
+  CURRENT_FOLDER=$(realpath "$PWD")
+  echo "📁 Current folder: $CURRENT_FOLDER"
+  load_config
+
+  platform=$(detect_platform "$CURRENT_FOLDER" "$platform_flag" "$dry_run")
+  [[ -z "$platform" ]] && platform="unknown"
+
+  if [[ "$platform" == "unknown" ]]; then
+    if [[ "$dry_run" == "true" ]]; then
+      echo -e "${YELLOW}⚠️ Platform is unknown — continuing due to dry-run.${RESET}"
+    else
+      echo -e "${RED}❌ No Git platform detected.${RESET}"
+      exit 1
+    fi
+  fi
+
+  repo=${repo:-$(basename "$PWD")}
+  branch=${default_branch:-main}
+  visibility=${default_visibility:-public}
+
+  echo "📌 Repo: $repo"
+  echo "📌 Branch: $branch"
+  echo "📌 Platform: $platform"
+  echo "📌 Visibility: $visibility"
+  echo "📦 dry_run=$dry_run | NO_PUSH=$NO_PUSH"
+
+  generate_readme
+  generate_gitignore
+  git_init_repo "$repo" "$branch" "$platform" "$visibility" "$(date '+%Y-%m-%d %H:%M:%S')" "$LOG_FILE" "$REPO_LIST"
+
+  show_final_message "$repo" "$branch" "$PWD" "$REPO_LIST" "$platform"
+
+  [[ "$dry_run" == "true" ]] && echo -e "${YELLOW}This was a dry-run. No git push or changes were made.${RESET}"
 }
 
 main "$@"
