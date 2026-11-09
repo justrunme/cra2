@@ -164,6 +164,7 @@ update-all --pull-only
 
 ### ⚡ Авторы
 
+**Author:** Andrey Lesnikov, Senior DevOps & AI Platform Engineer — [ORCID](https://orcid.org/0009-0004-7583-4314)  
 Скрипт и модульная архитектура: [@justrunme](https://github.com/justrunme)  
 💬 Идеи и код: ChatGPT + 🧠
 
